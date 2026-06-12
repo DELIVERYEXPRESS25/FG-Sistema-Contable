@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>F&G Sistema Contable</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;900&family=Inter:wght@300;400;500;600;700&display=swap');
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'Inter', sans-serif;
+  min-height: 100vh; height: 100vh;
+  display: flex;
+  overflow: hidden;
+  --accent: #4f8cff;
+  --accent2: #7c5cfc;
+}
+
+/* Panel izquierdo — formulario */
+.login-left {
+  flex: 1;
+  display: flex; align-items: center; justify-content: center;
+  padding: 40px;
+  background: #0f1117;
+  position: relative;
+}
+
+.login-left .bg-dots {
+  position: absolute; inset: 0;
+  background-image: radial-gradient(rgba(79,140,255,0.08) 1px, transparent 1px);
+  background-size: 28px 28px;
+  pointer-events: none;
+}
+
+.login-card {
+  width: 100%; max-width: 400px;
+  position: relative;
+  z-index: 1;
+}
+
+.login-card .logo-wrap {
+  display: flex; align-items: center; gap: 16px;
+  margin-bottom: 36px;
+}
+
+.login-card .logo {
+  width: 60px; height: 60px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid var(--accent);
+  box-shadow: 0 6px 24px rgba(79,140,255,0.35);
+  flex-shrink: 0;
+}
+
+.login-card .logo-text h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 28px; font-weight: 700;
+  color: #fff;
+  letter-spacing: 2px;
+  line-height: 1.1;
+}
+
+.login-card .logo-text p {
+  font-size: 12px; color: #7a7f99;
+  font-weight: 400;
+  margin-top: 3px;
+}
+
+.login-card h2 {
+  font-size: 15px; font-weight: 600;
+  color: #e2e4eb;
+  margin-bottom: 6px;
+}
+
+.login-card .sub {
+  font-size: 12px; color: #7a7f99;
+  margin-bottom: 28px;
+}
+
+.form-group {
+  margin-bottom: 18px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 11px; font-weight: 600;
+  color: #7a7f99;
+  text-transform: uppercase; letter-spacing: 1px;
+  margin-bottom: 7px;
+}
+
+.form-group input {
+  width: 100%;
+  background: #1a1d2e;
+  border: 1px solid #2a2d42;
+  border-radius: 10px;
+  padding: 13px 16px;
+  color: #fff;
+  font-size: 14px;
+  font-family: 'Inter', sans-serif;
+  outline: none;
+  transition: border .2s, box-shadow .2s;
+}
+
+.form-group input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(79,140,255,0.15);
+}
+
+.form-group input::placeholder {
+  color: #4a4f6a;
+}
+
+.btn-submit {
+  width: 100%;
+  padding: 13px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  font-size: 14px; font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  cursor: pointer;
+  transition: all .2s;
+  box-shadow: 0 4px 16px rgba(79,140,255,0.3);
+  margin-top: 6px;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+
+.btn-submit:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(79,140,255,0.45);
+}
+
+.btn-submit:active {
+  transform: translateY(0);
+}
+
+.error-msg {
+  background: rgba(231,76,60,0.12);
+  border: 1px solid rgba(231,76,60,0.25);
+  color: #e74c3c;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  margin-bottom: 20px;
+  display: flex; align-items: center; gap: 8px;
+}
+
+/* Panel derecho — visual */
+.login-right {
+  flex: 1;
+  background: linear-gradient(135deg, #1a1d2e 0%, #0f1117 100%);
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-right::before {
+  content: '';
+  position: absolute;
+  width: 600px; height: 600px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(79,140,255,0.08), transparent 70%);
+  top: -120px; right: -120px;
+}
+
+.login-right::after {
+  content: '';
+  position: absolute;
+  width: 400px; height: 400px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(124,92,252,0.08), transparent 70%);
+  bottom: -80px; left: -80px;
+}
+
+.login-right .hero-content {
+  position: relative; z-index: 1;
+  text-align: center;
+  padding: 40px;
+}
+
+.login-right .hero-icon {
+  font-size: 80px;
+  margin-bottom: 24px;
+  filter: drop-shadow(0 8px 32px rgba(79,140,255,0.25));
+}
+
+.login-right h2 {
+  font-family: 'Playfair Display', serif;
+  font-size: 36px; font-weight: 700;
+  color: #fff;
+  margin-bottom: 12px;
+  letter-spacing: 1px;
+}
+
+.login-right p {
+  font-size: 14px; color: #7a7f99;
+  max-width: 360px;
+  line-height: 1.6;
+  margin: 0 auto;
+}
+
+.login-right .features {
+  display: flex; gap: 24px;
+  justify-content: center;
+  margin-top: 40px;
+  flex-wrap: wrap;
+}
+
+.login-right .feature-item {
+  text-align: center;
+  min-width: 100px;
+}
+
+.login-right .feature-item .num {
+  font-size: 28px; font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.login-right .feature-item .lbl {
+  font-size: 11px; color: #7a7f99;
+  margin-top: 4px;
+  letter-spacing: 0.5px;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .login-right { display: none; }
+  .login-left { padding: 24px; }
+}
+
+@media (max-width: 480px) {
+  .login-left { padding: 20px; }
+  .login-card .logo-wrap { margin-bottom: 28px; }
+  .login-card .logo-text h1 { font-size: 22px; }
+  .form-group input { padding: 12px 14px; font-size: 13px; }
+  .btn-submit { padding: 12px; font-size: 13px; }
+}
+</style>
+</head>
+<body>
+  <div class="login-left">
+    <div class="bg-dots"></div>
+    <div class="login-card">
+      <div class="logo-wrap">
+        <img src="/static/logo_fg.jpg" alt="F&G" class="logo">
+        <div class="logo-text">
+          <h1>F &amp; G</h1>
+          <p>Sistema Contable</p>
+        </div>
+      </div>
+
+      <h2>🔐 Acceso al Sistema</h2>
+      <p class="sub">Ingresa la contraseña para continuar</p>
+
+      {% if error %}
+      <div class="error-msg">❌ {{ error }}</div>
+      {% endif %}
+
+      <form method="POST">
+        <div class="form-group">
+          <label>Contraseña</label>
+          <input type="password" name="password" placeholder="••••••••" autofocus required>
+        </div>
+        <button type="submit" class="btn-submit">🔐 Ingresar</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="login-right">
+    <div class="hero-content">
+      <div class="hero-icon">📊</div>
+      <h2>F &amp; G</h2>
+      <p>Control contable, inventarios y facturación en un solo lugar</p>
+      <div class="features">
+        <div class="feature-item">
+          <div class="num">Contabilidad</div>
+          <div class="lbl">Catálogo · Mayor · Balanza</div>
+        </div>
+        <div class="feature-item">
+          <div class="num">Inventarios</div>
+          <div class="lbl">Kardex PEPS · POS</div>
+        </div>
+        <div class="feature-item">
+          <div class="num">Reportes</div>
+          <div class="lbl">ER · BG · Cierre Mensual</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

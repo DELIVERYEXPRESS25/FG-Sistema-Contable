@@ -1,0 +1,230 @@
+{% extends "base.html" %}
+{% block title %}F&G — Gastos de Comercialización{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h2>📣 Gastos de Comercialización</h2>
+    <div class="subtitle">Registro y control de todos los gastos relacionados con ventas y distribución</div>
+  </div>
+  <div style="display:flex;gap:12px;">
+    <div style="background:var(--bg2);border:1px solid var(--border,var(--card-border));border-radius:10px;padding:8px 18px;text-align:center;">
+      <div style="font-size:20px;font-weight:700;color:var(--red);">C$ {{ "%.2f"|format(total) }}</div>
+      <div style="font-size:11px;color:var(--text-dim);">Total acumulado</div>
+    </div>
+    <div style="background:var(--bg2);border:1px solid var(--border,var(--card-border));border-radius:10px;padding:8px 18px;text-align:center;">
+      <div style="font-size:20px;font-weight:700;color:var(--accent);">{{ movimientos|length }}</div>
+      <div style="font-size:11px;color:var(--text-dim);">Movimientos</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════ RESUMEN POR CUENTA ═══════ -->
+{% if detalle %}
+<div class="grid-3" style="margin-bottom:20px;">
+  {% for item in detalle %}
+  <div class="stat-card">
+    <div class="accent-bar" style="background:linear-gradient(90deg,var(--red),var(--yellow));"></div>
+    <div class="label" style="font-size:10px;color:var(--text-dim);">{{ item.codigo }}</div>
+    <div class="value" style="font-size:16px;color:var(--red);margin-top:4px;">C$ {{ "%.2f"|format(item.saldo) }}</div>
+    <div class="trend" style="margin-top:4px;font-size:11px;color:var(--text-dim);">{{ item.nombre }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- ═══════ REGISTRAR NUEVO GASTO ═══════ -->
+<div class="card" style="border-color:rgba(231,76,60,0.3);margin-bottom:18px;">
+  <div class="card-title"><span class="icon">➕</span> Registrar Gasto de Comercialización</div>
+  <form method="POST" action="/comercializacion/registrar" id="frmGasto">
+    <div style="display:grid;grid-template-columns:160px 1fr 130px;gap:12px;margin-bottom:12px;">
+      <div class="form-group" style="margin:0;">
+        <label>Fecha</label>
+        <input type="date" name="fecha" id="fechaGasto" required>
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label>Descripción</label>
+        <input type="text" name="descripcion" placeholder="Ej: Pago de publicidad en redes sociales" required>
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label>Referencia</label>
+        <input type="text" name="ref" placeholder="REF-001">
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 160px;gap:12px;margin-bottom:14px;">
+      <div class="form-group" style="margin:0;">
+        <label>Cuenta de Gasto (6xxx)</label>
+        <select name="cuenta_gasto" required>
+          <option value="">— Seleccionar —</option>
+          {% for cod, info in cuentas_6.items()|sort %}
+          <option value="{{ cod }}">{{ cod }} — {{ info.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label>Pagado con</label>
+        <select name="cuenta_pago" required>
+          <option value="">— Seleccionar —</option>
+          {% for cod, info in todas_cuentas.items()|sort %}
+            {% if info.tipo in ['Activo','Pasivo'] %}
+            <option value="{{ cod }}">{{ cod }} — {{ info.nombre }}</option>
+            {% endif %}
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group" style="margin:0;">
+        <label>Monto C$</label>
+        <input type="number" name="monto" step="0.01" min="0.01" placeholder="0.00" required style="text-align:right;">
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary">💾 Registrar Gasto</button>
+  </form>
+</div>
+
+<!-- ═══════ GESTIÓN DE CUENTAS ═══════ -->
+<div class="card" style="padding:14px 22px;margin-bottom:18px;">
+  <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;justify-content:space-between;">
+    <span style="font-size:12px;color:var(--accent);font-weight:700;white-space:nowrap;">⚙️ Gestión de cuentas 6xxx:</span>
+    <!-- Nueva cuenta -->
+    <form method="POST" action="/comercializacion/cuenta/nueva" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex:1;">
+      <input type="text" name="codigo" placeholder="Código (ej: 6009)" style="padding:7px 10px;font-size:12px;max-width:130px;">
+      <input type="text" name="nombre" placeholder="Nombre de la cuenta" style="padding:7px 10px;font-size:12px;flex:1;min-width:180px;">
+      <button type="submit" class="btn btn-success" style="padding:7px 16px;font-size:12px;white-space:nowrap;">+ Agregar cuenta</button>
+    </form>
+    <!-- Eliminar cuenta (solo sin movimientos) -->
+    <form method="POST" action="/comercializacion/cuenta/eliminar" style="display:flex;gap:8px;align-items:center;">
+      <select name="codigo" style="padding:7px 10px;font-size:12px;max-width:250px;">
+        <option value="">— Eliminar cuenta —</option>
+        {% for cod, info in cuentas_6.items()|sort %}
+          {% set tiene_mov = major_tiene_mov(cod, mayor) if major_tiene_mov is defined else (cod in mayor and (mayor[cod].debe > 0 or mayor[cod].haber > 0)) %}
+          <option value="{{ cod }}" {% if cod in mayor and (mayor[cod].debe > 0 or mayor[cod].haber > 0) %}disabled title="Tiene movimientos"{% endif %}>
+            {{ cod }} — {{ info.nombre }} {% if cod in mayor and (mayor[cod].debe > 0 or mayor[cod].haber > 0) %}(con movimientos){% endif %}
+          </option>
+        {% endfor %}
+      </select>
+      <button type="submit" class="btn" style="padding:7px 14px;font-size:12px;background:rgba(231,76,60,0.12);color:var(--red);border:1px solid rgba(231,76,60,0.3);">Eliminar</button>
+    </form>
+  </div>
+</div>
+
+<!-- ═══════ HISTORIAL DE MOVIMIENTOS ═══════ -->
+<div class="card">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+    <div class="card-title" style="margin:0;"><span class="icon">📋</span> Historial de Gastos ({{ movimientos|length }})</div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+      <!-- Filtro por cuenta -->
+      <select id="filtroCuenta" onchange="filtrar()" style="padding:6px 12px;border-radius:8px;border:1px solid var(--card-border);background:var(--bg3);color:var(--text);font-size:12px;">
+        <option value="">Todas las cuentas</option>
+        {% for cod, info in cuentas_6.items()|sort %}
+        <option value="{{ cod }}">{{ cod }} — {{ info.nombre }}</option>
+        {% endfor %}
+      </select>
+      <input type="text" id="buscador" oninput="filtrar()" placeholder="🔍 Buscar..."
+        style="padding:6px 12px;border-radius:8px;border:1px solid var(--card-border);background:var(--bg3);color:var(--text);font-size:12px;width:200px;outline:none;">
+    </div>
+  </div>
+
+  {% if movimientos %}
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Fecha</th>
+        <th>Ref</th>
+        <th>Descripción</th>
+        <th>Cuenta</th>
+        <th style="text-align:right;">Debe C$</th>
+        <th style="text-align:right;">Haber C$</th>
+      </tr>
+    </thead>
+    <tbody id="tablaBody">
+    {% for m in movimientos %}
+      <tr class="mov-row"
+          data-cuenta="{{ m.cuenta }}"
+          data-search="{{ m.descripcion|lower }} {{ m.cuenta }} {{ m.nombre_cuenta|lower }} {{ m.ref|lower }} {{ m.fecha }}">
+        <td><span class="badge badge-blue">{{ m.id }}</span></td>
+        <td style="color:var(--text-dim);white-space:nowrap;">{{ m.fecha }}</td>
+        <td>{% if m.ref %}<span style="background:rgba(124,92,252,0.15);color:#9b7ff0;border:1px solid rgba(124,92,252,0.2);border-radius:5px;padding:1px 7px;font-size:11px;">{{ m.ref }}</span>{% else %}—{% endif %}</td>
+        <td style="color:var(--text-bright);">{{ m.descripcion }}</td>
+        <td>
+          <span style="background:rgba(231,76,60,0.1);color:var(--red);border:1px solid rgba(231,76,60,0.2);border-radius:5px;padding:2px 8px;font-size:11px;font-weight:600;">{{ m.cuenta }}</span>
+          <span style="color:var(--text-dim);font-size:12px;margin-left:4px;">{{ m.nombre_cuenta }}</span>
+        </td>
+        <td style="text-align:right;font-weight:600;color:var(--green);">
+          {% if m.tipo == 'Debe' %}C$ {{ "%.2f"|format(m.monto) }}{% endif %}
+        </td>
+        <td style="text-align:right;font-weight:600;color:var(--red);">
+          {% if m.tipo == 'Haber' %}C$ {{ "%.2f"|format(m.monto) }}{% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <!-- Totales de tabla -->
+  {% set td = namespace(v=0) %}
+  {% set th = namespace(v=0) %}
+  {% for m in movimientos %}
+    {% if m.tipo == 'Debe' %}{% set td.v = td.v + m.monto %}{% endif %}
+    {% if m.tipo == 'Haber' %}{% set th.v = th.v + m.monto %}{% endif %}
+  {% endfor %}
+  <div style="display:flex;justify-content:flex-end;gap:28px;padding:12px 14px;background:rgba(255,255,255,0.03);border-top:1px solid var(--card-border);border-radius:0 0 10px 10px;font-size:13px;font-weight:700;">
+    <span>Total Debe: <span style="color:var(--green);">C$ {{ "%.2f"|format(td.v) }}</span></span>
+    <span>Total Haber: <span style="color:var(--red);">C$ {{ "%.2f"|format(th.v) }}</span></span>
+    <span>Gasto Neto: <span style="color:var(--red);">C$ {{ "%.2f"|format(td.v - th.v) }}</span></span>
+  </div>
+  <div id="sinResultados" style="display:none;color:var(--text-dim);text-align:center;padding:24px;">Sin resultados.</div>
+  {% else %}
+  <p style="color:var(--text-dim);text-align:center;padding:40px;">No hay gastos de comercialización registrados aún.</p>
+  {% endif %}
+</div>
+
+<!-- ═══════ CATÁLOGO CUENTAS 6xxx ═══════ -->
+<div class="card">
+  <div class="card-title"><span class="icon">📂</span> Catálogo de Cuentas de Comercialización</div>
+  <table>
+    <thead>
+      <tr><th>Código</th><th>Nombre</th><th style="text-align:right;">Debe C$</th><th style="text-align:right;">Haber C$</th><th style="text-align:right;">Saldo C$</th></tr>
+    </thead>
+    <tbody>
+    {% for cod, info in cuentas_6.items()|sort %}
+      {% set d = mayor[cod].debe  if cod in mayor else 0 %}
+      {% set h = mayor[cod].haber if cod in mayor else 0 %}
+      {% set s = d - h %}
+      <tr>
+        <td><span class="badge badge-red" style="font-size:11px;">{{ cod }}</span></td>
+        <td style="color:var(--text-bright);">{{ info.nombre }}</td>
+        <td style="text-align:right;color:var(--green);font-weight:600;">{% if d > 0 %}C$ {{ "%.2f"|format(d) }}{% else %}—{% endif %}</td>
+        <td style="text-align:right;color:var(--red);font-weight:600;">{% if h > 0 %}C$ {{ "%.2f"|format(h) }}{% else %}—{% endif %}</td>
+        <td style="text-align:right;font-weight:700;color:{% if s > 0 %}var(--red){% elif s < 0 %}var(--green){% else %}var(--text-dim){% endif %};">
+          {% if s != 0 %}C$ {{ "%.2f"|format(s) }}{% else %}C$ 0.00{% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    <tr style="background:rgba(255,255,255,0.03);border-top:2px solid var(--card-border);">
+      <td colspan="4" style="font-weight:700;color:var(--text-bright);text-align:right;padding:10px 14px;">Total Gastos Comercialización</td>
+      <td style="text-align:right;font-weight:700;color:var(--red);padding:10px 14px;">C$ {{ "%.2f"|format(total) }}</td>
+    </tr>
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('fechaGasto').valueAsDate = new Date();
+
+function filtrar() {
+  const cuenta = document.getElementById('filtroCuenta').value.toLowerCase();
+  const texto  = document.getElementById('buscador').value.toLowerCase().trim();
+  const filas  = document.querySelectorAll('.mov-row');
+  let visibles = 0;
+  filas.forEach(tr => {
+    const okCuenta = !cuenta || tr.dataset.cuenta === cuenta;
+    const okTexto  = !texto  || tr.dataset.search.includes(texto);
+    tr.style.display = (okCuenta && okTexto) ? '' : 'none';
+    if (okCuenta && okTexto) visibles++;
+  });
+  document.getElementById('sinResultados').style.display = (visibles === 0) ? '' : 'none';
+}
+</script>
+{% endblock %}

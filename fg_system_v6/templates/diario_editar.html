@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+{% block title %}Editar Asiento{% endblock %}
+{% block content %}
+
+<div class="page-header">
+  <div>
+    <h1><span class="icon">✏️</span> Editar Asiento #{{ asiento.id }}</h1>
+    <p style="color:var(--text-dim); font-size:13px; margin-top:6px;">
+      Modifica los datos del asiento contable
+    </p>
+  </div>
+  <a href="/diario" class="btn btn-outline">← Volver al Diario</a>
+</div>
+
+<div class="card">
+  <div class="card-title"><span class="icon">📝</span> Información del Asiento</div>
+  
+  <form method="POST" action="/diario/editar/{{ asiento.id }}">
+    <!-- FECHA, REFERENCIA, DESCRIPCIÓN -->
+    <div class="form-row">
+      <div>
+        <label>Fecha *</label>
+        <input type="date" name="fecha" value="{{ asiento.fecha }}" required>
+      </div>
+      <div>
+        <label>Referencia</label>
+        <input type="text" name="ref" value="{{ asiento.ref or '' }}" placeholder="Opcional">
+      </div>
+    </div>
+    
+    <div>
+      <label>Descripción *</label>
+      <input type="text" name="descripcion" value="{{ asiento.descripcion }}" required>
+    </div>
+    
+    <!-- MOVIMIENTOS -->
+    <div style="margin-top:20px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <label style="margin:0; font-weight:600;">Movimientos Contables *</label>
+        <button type="button" onclick="addLine()" class="btn btn-outline" style="padding:6px 12px; font-size:11px;">
+          ➕ Agregar Línea
+        </button>
+      </div>
+      
+      <div id="movContainer">
+        {% for mov in movimientos %}
+        <div class="mov-line" style="display:grid; grid-template-columns:2fr 1fr 1fr auto; gap:10px; margin-bottom:10px; align-items:end;">
+          <div>
+            <label style="font-size:11px;">Cuenta *</label>
+            <select name="cuenta" required style="width:100%;">
+              <option value="">— Seleccionar cuenta —</option>
+              {% for codigo, nombre in cuentas.items() %}
+              <option value="{{ codigo }}" {% if codigo == mov.cuenta %}selected{% endif %}>
+                {{ codigo }} - {{ nombre if nombre is string else nombre.get('nombre', nombre) }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;">Debe C$</label>
+            <input type="number" name="debe" step="0.01" min="0" value="{{ mov.debe if mov.debe > 0 else '' }}" placeholder="0.00">
+          </div>
+          <div>
+            <label style="font-size:11px;">Haber C$</label>
+            <input type="number" name="haber" step="0.01" min="0" value="{{ mov.haber if mov.haber > 0 else '' }}" placeholder="0.00">
+          </div>
+          <div>
+            <button type="button" onclick="removeLine(this)" class="btn" style="padding:8px 12px; background:var(--red); color:white; border:none;">
+              🗑️
+            </button>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    
+    <!-- VALIDACIÓN -->
+    <div id="validacion" style="margin-top:16px; padding:12px; border-radius:6px; display:none;"></div>
+    
+    <!-- BOTONES -->
+    <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:24px;">
+      <a href="/diario" class="btn btn-outline">Cancelar</a>
+      <button type="submit" class="btn btn-primary">💾 Guardar Cambios</button>
+    </div>
+  </form>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function addLine() {
+  const container = document.getElementById('movContainer');
+  const newLine = document.createElement('div');
+  newLine.className = 'mov-line';
+  newLine.style.cssText = 'display:grid; grid-template-columns:2fr 1fr 1fr auto; gap:10px; margin-bottom:10px; align-items:end;';
+  
+  newLine.innerHTML = `
+    <div>
+      <label style="font-size:11px;">Cuenta *</label>
+      <select name="cuenta" required style="width:100%;">
+        <option value="">— Seleccionar cuenta —</option>
+        {% for codigo, nombre in cuentas.items() %}
+        <option value="{{ codigo }}">{{ codigo }} - {{ nombre if nombre is string else nombre.get('nombre', nombre) }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label style="font-size:11px;">Debe C$</label>
+      <input type="number" name="debe" step="0.01" min="0" placeholder="0.00">
+    </div>
+    <div>
+      <label style="font-size:11px;">Haber C$</label>
+      <input type="number" name="haber" step="0.01" min="0" placeholder="0.00">
+    </div>
+    <div>
+      <button type="button" onclick="removeLine(this)" class="btn" style="padding:8px 12px; background:var(--red); color:white; border:none;">
+        🗑️
+      </button>
+    </div>
+  `;
+  
+  container.appendChild(newLine);
+  validarPartida();
+}
+
+function removeLine(btn) {
+  const lines = document.querySelectorAll('.mov-line');
+  if (lines.length > 1) {
+    btn.closest('.mov-line').remove();
+    validarPartida();
+  }
+}
+
+function validarPartida() {
+  const debes = document.querySelectorAll('input[name="debe"]');
+  const haberes = document.querySelectorAll('input[name="haber"]');
+  
+  let totalDebe = 0;
+  let totalHaber = 0;
+  
+  debes.forEach(d => totalDebe += parseFloat(d.value) || 0);
+  haberes.forEach(h => totalHaber += parseFloat(h.value) || 0);
+  
+  const validacion = document.getElementById('validacion');
+  const diff = Math.abs(totalDebe - totalHaber);
+  
+  if (diff < 0.01) {
+    validacion.style.display = 'block';
+    validacion.style.background = 'rgba(46,204,113,0.1)';
+    validacion.style.borderLeft = '4px solid var(--green)';
+    validacion.innerHTML = `
+      <strong style="color:var(--green);">✓ Partida Balanceada</strong><br>
+      <span style="font-size:12px; color:var(--text-dim);">
+        Total Debe: C$ ${totalDebe.toFixed(2)} = Total Haber: C$ ${totalHaber.toFixed(2)}
+      </span>
+    `;
+  } else {
+    validacion.style.display = 'block';
+    validacion.style.background = 'rgba(231,76,60,0.1)';
+    validacion.style.borderLeft = '4px solid var(--red)';
+    validacion.innerHTML = `
+      <strong style="color:var(--red);">✗ Partida Desbalanceada</strong><br>
+      <span style="font-size:12px; color:var(--text-dim);">
+        Diferencia: C$ ${diff.toFixed(2)} (Debe: C$ ${totalDebe.toFixed(2)} / Haber: C$ ${totalHaber.toFixed(2)})
+      </span>
+    `;
+  }
+}
+
+// Validar al cargar y al cambiar valores
+document.addEventListener('DOMContentLoaded', () => {
+  validarPartida();
+  document.querySelectorAll('input[name="debe"], input[name="haber"]').forEach(input => {
+    input.addEventListener('input', validarPartida);
+  });
+});
+</script>
+{% endblock %}

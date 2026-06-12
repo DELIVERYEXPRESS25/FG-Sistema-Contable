@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}F&G — Reportes Fiscales{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h2>📋 Reportes Fiscales</h2>
+    <div class="subtitle">IVA, DGI y Alcaldía — Resúmenes para declaraciones fiscales</div>
+  </div>
+</div>
+
+<div class="grid-3" style="margin-bottom:22px;">
+  <div class="stat-card">
+    <div class="accent-bar" style="background:linear-gradient(90deg,var(--yellow),var(--accent));"></div>
+    <div class="label">💰 IVA</div>
+    <div class="value" style="font-size:16px;">Impuesto al Valor Agregado</div>
+    <div class="trend">15% sobre ingresos y gastos</div>
+    <div style="margin-top:12px;">
+      <a href="/fiscales/iva" class="btn btn-primary" style="text-decoration:none;font-size:12px;padding:8px 16px;">📄 Ver Reporte</a>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="accent-bar" style="background:linear-gradient(90deg,var(--red),var(--accent2));"></div>
+    <div class="label">🏛️ DGI</div>
+    <div class="value" style="font-size:16px;">Dirección General de Ingresos</div>
+    <div class="trend">Resumen para declaración mensual</div>
+    <div style="margin-top:12px;">
+      <a href="/fiscales/dgi" class="btn btn-primary" style="text-decoration:none;font-size:12px;padding:8px 16px;">📄 Ver Reporte</a>
+    </div>
+  </div>
+  <div class="stat-card">
+    <div class="accent-bar" style="background:linear-gradient(90deg,var(--green),var(--accent));"></div>
+    <div class="label">🏙️ Alcaldía</div>
+    <div class="value" style="font-size:16px;">Impuesto Municipal</div>
+    <div class="trend">1% sobre ingresos brutos</div>
+    <div style="margin-top:12px;">
+      <a href="/fiscales/alcaldia" class="btn btn-primary" style="text-decoration:none;font-size:12px;padding:8px 16px;">📄 Ver Reporte</a>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title"><span class="icon">📖</span> Acerca de estos reportes</div>
+  <div style="font-size:13px;line-height:1.7;color:var(--text);">
+    <p><strong>IVA (15%)</strong> — Calculado sobre el total de ingresos gravados y gastos con IVA del período seleccionado. El IVA a pagar es la diferencia entre el IVA debitado (ventas) y el IVA creditado (compras/gastos).</p>
+    <p><strong>DGI</strong> — Resumen de ingresos, gastos y utilidad para declaración ante la Dirección General de Ingresos. Incluye cálculo estimado del IR (Impuesto sobre la Renta) del 30% sobre la utilidad neta.</p>
+    <p><strong>Alcaldía</strong> — Impuesto Municipal del 1% sobre los ingresos brutos del período, según lo establecido en la Ley de Municipios de Nicaragua.</p>
+    <p style="color:var(--text-dim);font-size:11px;margin-top:12px;">* Estos cálculos son estimados. Consulte a su contador para la declaración oficial.</p>
+  </div>
+</div>
+{% endblock %}

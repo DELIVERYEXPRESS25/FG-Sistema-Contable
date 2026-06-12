@@ -1,0 +1,41 @@
+# ═══════════════════════════════════════════════════════════
+# docker-compose.yml - FG Sistema Contable
+# ═══════════════════════════════════════════════════════════
+
+services:
+  app:
+    build: .
+    container_name: fg_sistema
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data:/app/data
+      - ./uploads:/app/uploads
+    env_file:
+      - .env
+    environment:
+      - DB_PATH=/app/data/.colectivo_fg.db
+    networks:
+      - fg_network
+
+  # Base de datos PostgreSQL (opcional)
+  # db:
+  #   image: postgres:15-alpine
+  #   container_name: fg_postgres
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_DB: colectivo_fg
+  #     POSTGRES_USER: admin
+  #     POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   networks:
+  #     - fg_network
+
+networks:
+  fg_network:
+    driver: bridge
+
+volumes:
+  postgres_data:

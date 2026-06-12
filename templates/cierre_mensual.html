@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+{% block title %}F&G — Cierres{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h2>📆 Cierre de Períodos</h2>
+    <div class="subtitle">Corte de saldos — Mensual · Semanal · Quincenal</div>
+  </div>
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:8px 18px;text-align:center;">
+    <div style="font-size:22px;font-weight:700;color:var(--accent);">{{ total_cerrados }}</div>
+    <div style="font-size:11px;color:var(--text-dim);">
+      {% if tipo_actual == 'mensual' %}Meses{% elif tipo_actual == 'semanal' %}Semanas{% else %}Quincenas{% endif %} cerrados
+    </div>
+  </div>
+</div>
+
+{% set tipo = tipo_actual|default('mensual') %}
+
+<!-- TABS -->
+<div style="display:flex;gap:8px;margin-bottom:18px;">
+  {% for t, label in [('mensual', '📆 Mensual'), ('semanal', '📅 Semanal'), ('quincenal', '📗 Quincenal')] %}
+  <a href="/cierre-mensual?tipo={{ t }}" class="btn {% if tipo == t %}btn-primary{% else %}btn-outline{% endif %}" style="text-decoration:none;">{{ label }}</a>
+  {% endfor %}
+</div>
+
+{% if request.args.get('ok') %}
+<div style="background:rgba(46,204,113,0.12);border:1px solid rgba(46,204,113,0.3);border-radius:10px;padding:12px 18px;margin-bottom:18px;color:var(--green);font-weight:600;">
+  ✅ {% if request.args.get('ok') == 'cierre_revertido' %}Cierre revertido correctamente{% else %}Cierre ejecutado correctamente para {{ request.args.get('ok').split('_')[1] if '_' in request.args.get('ok', '') else request.args.get('ok') }}{% endif %}
+</div>
+{% endif %}
+
+{% if request.args.get('error') == 'periodo_ya_cerrado' %}
+<div style="background:rgba(231,76,60,0.12);border:1px solid rgba(231,76,60,0.3);border-radius:10px;padding:12px 18px;margin-bottom:18px;color:var(--red);font-weight:600;">
+  ⚠️ Este período ya fue cerrado anteriormente.
+</div>
+{% endif %}
+
+{% if request.args.get('error') == 'periodo_invalido' %}
+<div style="background:rgba(231,76,60,0.12);border:1px solid rgba(231,76,60,0.3);border-radius:10px;padding:12px 18px;margin-bottom:18px;color:var(--red);font-weight:600;">
+  ⚠️ Período inválido.
+</div>
+{% endif %}
+
+{% if request.args.get('error') == 'sin_cuentas_resultado' %}
+<div style="background:rgba(231,76,60,0.12);border:1px solid rgba(231,76,60,0.3);border-radius:10px;padding:12px 18px;margin-bottom:18px;color:var(--red);font-weight:600;">
+  ⚠️ No hay cuentas de resultado (ingresos/gastos) con saldo en este período.
+</div>
+{% endif %}
+
+{% if request.args.get('error') == 'mes_cerrado' %}
+<div style="background:rgba(231,76,60,0.12);border:1px solid rgba(231,76,60,0.3);border-radius:10px;padding:12px 18px;margin-bottom:18px;color:var(--red);font-weight:600;">
+  ⚠️ No puedes registrar asientos en un período que ya fue cerrado.
+</div>
+{% endif %}
+
+<!-- VISTA PREVIA -->
+{% if periodo_preview is defined and cuentas_resultado %}
+<div class="card" style="border-color:rgba(79,140,255,0.35);margin-bottom:18px;">
+  <div class="card-title"><span class="icon">🔍</span> Vista Previa — {{ tipo_actual|capitalize }} {{ periodo_preview }}</div>
+
+  <table style="margin-bottom:16px;">
+    <thead>
+      <tr>
+        <th>Cuenta</th>
+        <th>Tipo</th>
+        <th>Debe C$</th>
+        <th>Haber C$</th>
+        <th style="text-align:right;">Saldo C$</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for cod, info in cuentas_resultado.items() %}
+      <tr>
+        <td><span class="badge badge-blue" style="font-size:10px;">{{ cod }}</span> {{ info.nombre }}</td>
+        <td><span class="badge" style="font-size:10px;{% if info.tipo == 'Ingreso' %}background:rgba(46,204,113,0.15);color:var(--green);{% else %}background:rgba(231,76,60,0.15);color:var(--red);{% endif %}">{{ info.tipo }}</span></td>
+        <td style="text-align:right;" class="money money-pos">C$ {{ "%.2f"|format(info.debe) }}</td>
+        <td style="text-align:right;" class="money money-neg">C$ {{ "%.2f"|format(info.haber) }}</td>
+        <td style="text-align:right;" class="money {% if info.saldo >= 0 %}money-pos{% else %}money-neg{% endif %}">C$ {{ "%.2f"|format(info.saldo) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr class="totals-row">
+        <td colspan="2" style="text-align:right;font-weight:700;">Total Ingresos</td>
+        <td></td>
+        <td></td>
+        <td style="text-align:right;" class="money money-pos">C$ {{ "%.2f"|format(total_ingresos) }}</td>
+      </tr>
+      <tr class="totals-row">
+        <td colspan="2" style="text-align:right;font-weight:700;">Total Gastos</td>
+        <td></td>
+        <td></td>
+        <td style="text-align:right;" class="money money-neg">C$ {{ "%.2f"|format(total_gastos) }}</td>
+      </tr>
+      <tr class="totals-row">
+        <td colspan="2" style="text-align:right;font-weight:700;">Resultado del Período</td>
+        <td></td>
+        <td></td>
+        <td style="text-align:right;font-weight:700;" class="money {% if resultado >= 0 %}money-pos{% else %}money-neg{% endif %}">
+          {% if resultado >= 0 %}Utilidad: C$ {{ "%.2f"|format(resultado) }}{% else %}Pérdida: C$ {{ "%.2f"|format(resultado) }}{% endif %}
+        </td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <div style="display:flex;gap:10px;justify-content:center;">
+    <form method="POST" action="/cierre-mensual/ejecutar">
+      <input type="hidden" name="periodo" value="{{ periodo_preview }}">
+      <input type="hidden" name="tipo" value="{{ tipo_actual|default('mensual') }}">
+      <button type="submit" class="btn btn-primary" onclick="return confirm('¿Ejecutar cierre {{ tipo_actual|default('mensual') }} para {{ periodo_preview }}?\n\nSe generar\u00e1 un asiento de cierre en el Libro Diario.\nEsta acci\u00f3n no se puede deshacer.')">✅ Ejecutar Cierre</button>
+    </form>
+    <a href="/cierre-mensual?tipo={{ tipo_actual|default('mensual') }}" class="btn btn-outline">✕ Cancelar</a>
+  </div>
+</div>
+{% endif %}
+
+<!-- LISTA DE PERÍODOS -->
+<div class="card">
+  <div class="card-title"><span class="icon">📋</span> Períodos Disponibles
+    <span style="font-weight:400;font-size:11px;color:var(--text-dim);"> — {{ tipo_actual|default('mensual')|capitalize }}</span>
+  </div>
+
+  {% if periodos %}
+  <table>
+    <thead>
+      <tr>
+        <th>Período</th>
+        <th style="text-align:right;">Ingresos C$</th>
+        <th style="text-align:right;">Gastos C$</th>
+        <th style="text-align:right;">Resultado C$</th>
+        <th>Estado</th>
+        <th>Acción</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in periodos %}
+      <tr>
+        <td><strong style="color:var(--text-bright);">{{ p.periodo }}</strong></td>
+        <td style="text-align:right;" class="money money-pos">C$ {{ "%.2f"|format(p.total_ingresos) }}</td>
+        <td style="text-align:right;" class="money money-neg">C$ {{ "%.2f"|format(p.total_gastos) }}</td>
+        <td style="text-align:right;" class="money {% if p.resultado >= 0 %}money-pos{% else %}money-neg{% endif %}">
+          {% if p.resultado >= 0 %}C$ {{ "%.2f"|format(p.resultado) }}{% else %}-C$ {{ "%.2f"|format(-p.resultado) }}{% endif %}
+        </td>
+        <td>
+          {% if p.cerrado %}
+          <span class="badge badge-green">✅ Cerrado</span>
+          {% else %}
+          <span class="badge badge-yellow">🔓 Abierto</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if p.cerrado %}
+          <form method="POST" action="/cierre-mensual/revertir/{{ tipo_actual|default('mensual') }}/{{ p.periodo }}" style="display:inline;">
+            <button type="submit" class="btn btn-outline" style="padding:4px 12px;font-size:11px;background:rgba(231,76,60,0.1);color:var(--red);border-color:var(--red);text-decoration:none;cursor:pointer;" onclick="return confirm('⚠️ ¿Revertir cierre de {{ p.periodo }}?\n\nSe eliminará el asiento de cierre y podrá registrar nuevos movimientos.\nEsta acción no se puede deshacer.')">🔄 Revertir</button>
+          </form>
+          {% else %}
+          <a href="/cierre-mensual/vista-previa/{{ tipo_actual|default('mensual') }}/{{ p.periodo }}" class="btn btn-outline" style="padding:4px 12px;font-size:11px;text-decoration:none;">🔍 Vista Previa</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color:var(--text-dim);text-align:center;padding:40px;">
+    No hay períodos {{ tipo_actual|default('mensual') }} con movimientos contables aún.
+    <br>Registra asientos en el <a href="/diario" style="color:var(--accent);">Libro Diario</a> para generar períodos disponibles.
+  </p>
+  {% endif %}
+</div>
+
+<!-- INFO -->
+<div class="card">
+  <div class="card-title">Sobre los Cierres</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;font-size:12px;color:var(--text-dim);">
+    <div style="background:var(--bg3);border-radius:8px;padding:14px;">
+      <strong style="color:var(--text-bright);display:block;margin-bottom:6px;">📆 Mensual</strong>
+      Cierre estándar por mes calendario (YYYY-MM). Transfiere ingresos y gastos del mes a Utilidades Retenidas.
+    </div>
+    <div style="background:var(--bg3);border-radius:8px;padding:14px;">
+      <strong style="color:var(--text-bright);display:block;margin-bottom:6px;">📅 Semanal</strong>
+      Cierre por semana ISO (YYYY-W##). Ideal para negocios con cierre semanal de caja o resultados semanales.
+    </div>
+    <div style="background:var(--bg3);border-radius:8px;padding:14px;">
+      <strong style="color:var(--text-bright);display:block;margin-bottom:6px;">📗 Quincenal</strong>
+      Cierre por quincena (YYYY-MM-S1 / S2). S1 = días 1–15, S2 = días 16–fin de mes.
+    </div>
+  </div>
+</div>
+{% endblock %}

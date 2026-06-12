@@ -1,0 +1,362 @@
+{% extends "base.html" %}
+{% block title %}F&G — Reportes{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h2>📤 Centro de Reportes</h2>
+    <div class="subtitle">Exporta los estados financieros en Excel o PDF — con o sin filtro por período</div>
+  </div>
+</div>
+
+<!-- STATS TOP -->
+<div class="grid-4" style="margin-bottom:24px;">
+  <div class="stat-card">
+    <div class="accent-bar" style="background:var(--accent);"></div>
+    <div class="label">Asientos Diario</div>
+    <div class="value">{{ diario|length }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="accent-bar" style="background:var(--accent2);"></div>
+    <div class="label">Cuentas Activas</div>
+    <div class="value">{{ cuentas|length }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="accent-bar" style="background:var(--green);"></div>
+    <div class="label">Utilidad Neta</div>
+    <div class="value money {% if utilidad >= 0 %}money-pos{% else %}money-neg{% endif %}">C$ {{ "%.2f"|format(utilidad) }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="accent-bar" style="background:var(--yellow);"></div>
+    <div class="label">Productos Kardex</div>
+    <div class="value">{{ kardex|length }}</div>
+  </div>
+</div>
+
+<!-- FILTRO DE PERÍODO -->
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-title"><span class="icon">📅</span> Filtrar por período</div>
+  <div class="form-row" style="align-items:end;">
+    <div class="form-group" style="max-width:200px;">
+      <label>Desde</label>
+      <input type="date" id="filtroDesde">
+    </div>
+    <div class="form-group" style="max-width:200px;">
+      <label>Hasta</label>
+      <input type="date" id="filtroHasta">
+    </div>
+    <button class="btn btn-outline btn-sm" onclick="limpiarFiltro()" style="align-self:flex-end;">✕ Limpiar</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     ⚡ NAVEGACIÓN RÁPIDA
+     ═══════════════════════════════════════════════════════ -->
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px;font-size:13px;">
+  <a href="#excel" class="btn btn-outline btn-sm" style="text-decoration:none;">📗 Excel</a>
+  <a href="#pdf" class="btn btn-outline btn-sm" style="text-decoration:none;">📄 PDF</a>
+  <a href="#antiguedad" class="btn btn-outline btn-sm" style="text-decoration:none;">⏳ Antigüedad</a>
+  <a href="#fiscales" class="btn btn-outline btn-sm" style="text-decoration:none;">🏛️ Fiscales</a>
+  <a href="#auditoria" class="btn btn-outline btn-sm" style="text-decoration:none;">📜 Auditoría</a>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     SECCIÓN EXCEL
+     ═══════════════════════════════════════════════════════ -->
+<h3 id="excel" style="margin:24px 0 12px;display:flex;align-items:center;gap:8px;">
+  <span style="font-size:20px;">📗</span> Excel
+  <span style="font-size:11px;color:var(--text-dim);font-weight:400;"> — Descargar como .xlsx</span>
+</h3>
+
+<div class="card" style="border-color:rgba(79,140,255,0.35);background:linear-gradient(135deg,rgba(79,140,255,0.06),rgba(124,92,252,0.04));margin-bottom:8px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
+    <div>
+      <div class="card-title" style="margin-bottom:4px;"><span class="icon">📦</span> Exportar Todo en Excel</div>
+      <p style="color:var(--text-dim);font-size:12px;margin:0;">
+        Genera un Excel con todas las hojas: Diario, Mayor, Balanza, Estado Resultados, Balance General, Kardex, Antigüedad Cobros, IVA, DGI, Alcaldía.
+      </p>
+    </div>
+    <button class="btn btn-primary" style="padding:12px 28px;font-size:14px;" onclick="exportar('todos')">📥 Exportar Completo</button>
+  </div>
+</div>
+
+<div class="grid-2" style="margin-top:12px;">
+  <div class="card" style="border-color:rgba(79,140,255,0.2);">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+      <div>
+        <div class="card-title" style="margin-bottom:6px;"><span class="icon">🧾</span> Libro Diario</div>
+        <p style="color:var(--text-dim);font-size:12px;margin:0;">{{ diario|length }} asientos. Registro cronológico completo.</p>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="exportar('diario')">📥 Excel</button>
+    </div>
+  </div>
+  <div class="card" style="border-color:rgba(124,92,252,0.2);">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+      <div>
+        <div class="card-title" style="margin-bottom:6px;"><span class="icon">📗</span> Libro Mayor</div>
+        <p style="color:var(--text-dim);font-size:12px;margin:0;">{{ cuentas|length }} cuentas. Debe, haber y saldo consolidado.</p>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="exportar('mayor')">📥 Excel</button>
+    </div>
+  </div>
+  <div class="card" style="border-color:rgba(243,156,18,0.2);">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+      <div>
+        <div class="card-title" style="margin-bottom:6px;"><span class="icon">⚖️</span> Balanza de Comprobación</div>
+        <p style="color:var(--text-dim);font-size:12px;margin:0;">Débitos, créditos y saldos por cuenta.</p>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="exportar('balanza')">📥 Excel</button>
+    </div>
+  </div>
+  <div class="card" style="border-color:rgba(46,204,113,0.2);">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+      <div>
+        <div class="card-title" style="margin-bottom:6px;"><span class="icon">📊</span> Estado de Resultados</div>
+        <p style="color:var(--text-dim);font-size:12px;margin:0;">Ingresos C$ {{ "%.2f"|format(total_ingresos) }} — Gastos C$ {{ "%.2f"|format(total_gastos) }} — Utilidad C$ {{ "%.2f"|format(utilidad) }}.</p>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="exportar('estado_resultados')">📥 Excel</button>
+    </div>
+  </div>
+  <div class="card" style="border-color:rgba(231,76,60,0.2);">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+      <div>
+        <div class="card-title" style="margin-bottom:6px;"><span class="icon">🏦</span> Balance General</div>
+        <p style="color:var(--text-dim);font-size:12px;margin:0;">Activos C$ {{ "%.2f"|format(total_activo) }} = Pasivos C$ {{ "%.2f"|format(total_pasivo) }} + Capital C$ {{ "%.2f"|format(total_capital) }}.</p>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="exportar('balance_general')">📥 Excel</button>
+    </div>
+  </div>
+  <div class="card" style="border-color:rgba(155,89,182,0.2);">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+      <div>
+        <div class="card-title" style="margin-bottom:6px;"><span class="icon">📦</span> Kardex PEPS</div>
+        <p style="color:var(--text-dim);font-size:12px;margin:0;">{{ kardex|length }} productos. Método PEPS con lotes.</p>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="btn btn-outline btn-sm" onclick="exportar('kardex')">📥 Excel</button>
+        <a href="/kardex" class="btn btn-primary btn-sm" style="text-decoration:none;">📊 Ver Kardex</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     SECCIÓN PDF
+     ═══════════════════════════════════════════════════════ -->
+<h3 id="pdf" style="margin:32px 0 12px;display:flex;align-items:center;gap:8px;">
+  <span style="font-size:20px;">📄</span> PDF
+  <span style="font-size:11px;color:var(--text-dim);font-weight:400;"> — Descargar como .pdf — respeta el filtro de período</span>
+</h3>
+
+<div class="grid-2" style="margin-top:12px;">
+  {% set pdfs = [
+    ("balanza", "⚖️", "Balanza de Comprobación"),
+    ("estado-resultados", "📊", "Estado de Resultados"),
+    ("balance-general", "🏦", "Balance General"),
+    ("diario", "🧾", "Libro Diario"),
+    ("mayor", "📗", "Libro Mayor"),
+    ("cobrar", "💳", "Cuentas por Cobrar"),
+    ("caja", "🏧", "Movimientos de Caja"),
+    ("completo", "📚", "Reporte Completo (todo)"),
+  ] %}
+  {% for slug, icon, label in pdfs %}
+  <div class="card" style="border-color:rgba(79,140,255,0.15);">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+      <div><div class="card-title" style="margin-bottom:2px;font-size:13px;"><span class="icon">{{ icon }}</span> {{ label }}</div></div>
+      <a href="#" class="btn btn-outline btn-sm" style="text-decoration:none;white-space:nowrap;" onclick="return descargarPDF('{{ slug }}')">📄 PDF</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     SECCIÓN ANTIGÜEDAD DE COBROS
+     ═══════════════════════════════════════════════════════ -->
+<h3 id="antiguedad" style="margin:32px 0 12px;display:flex;align-items:center;gap:8px;">
+  <span style="font-size:20px;">⏳</span> Antigüedad de Cobros
+  <span style="font-size:11px;color:var(--text-dim);font-weight:400;"> — Saldos pendientes por rango de vencimiento</span>
+</h3>
+
+<div class="card" style="border-color:rgba(230,126,34,0.25);">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+    <div>
+      <div class="card-title" style="margin-bottom:4px;"><span class="icon">⏳</span> Reporte de Antigüedad</div>
+      <p style="color:var(--text-dim);font-size:12px;margin:0;">
+        Cuentas por cobrar agrupadas por rango de días vencido: 0-30, 31-60, 61-90, 91+. Incluye detalle individual.
+      </p>
+    </div>
+    <div style="display:flex;gap:6px;">
+      <button class="btn btn-outline btn-sm" onclick="exportar('antiguedad_cobros')">📥 Excel</button>
+      <a href="#" class="btn btn-outline btn-sm" style="text-decoration:none;" onclick="return descargarPDF('antiguedad-cobros')">📄 PDF</a>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     SECCIÓN FISCALES
+     ═══════════════════════════════════════════════════════ -->
+<h3 id="fiscales" style="margin:32px 0 12px;display:flex;align-items:center;gap:8px;">
+  <span style="font-size:20px;">🏛️</span> Fiscales
+  <span style="font-size:11px;color:var(--text-dim);font-weight:400;"> — IVA, DGI, Alcaldía</span>
+</h3>
+
+<div class="grid-3" style="margin-top:12px;">
+  <div class="card" style="border-color:rgba(243,156,18,0.2);">
+    <div class="accent-bar" style="background:linear-gradient(90deg,var(--yellow),var(--accent));"></div>
+    <div class="label" style="font-size:13px;font-weight:600;">💰 IVA (15%)</div>
+    <p style="color:var(--text-dim);font-size:11px;">Débito − Crédito fiscal del período.</p>
+    <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+      <a href="/fiscales/iva" class="btn btn-outline btn-sm" style="text-decoration:none;">📄 Ver</a>
+      <button class="btn btn-outline btn-sm" onclick="exportarFiscal('fiscal_iva')">📥 Excel</button>
+    </div>
+  </div>
+  <div class="card" style="border-color:rgba(231,76,60,0.2);">
+    <div class="accent-bar" style="background:linear-gradient(90deg,var(--red),var(--accent2));"></div>
+    <div class="label" style="font-size:13px;font-weight:600;">🏛️ DGI</div>
+    <p style="color:var(--text-dim);font-size:11px;">Ingresos, gastos, utilidad e IR (30%).</p>
+    <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+      <a href="/fiscales/dgi" class="btn btn-outline btn-sm" style="text-decoration:none;">📄 Ver</a>
+      <button class="btn btn-outline btn-sm" onclick="exportarFiscal('fiscal_dgi')">📥 Excel</button>
+    </div>
+  </div>
+  <div class="card" style="border-color:rgba(46,204,113,0.2);">
+    <div class="accent-bar" style="background:linear-gradient(90deg,var(--green),var(--accent));"></div>
+    <div class="label" style="font-size:13px;font-weight:600;">🏙️ Alcaldía (1%)</div>
+    <p style="color:var(--text-dim);font-size:11px;">Impuesto municipal sobre ingresos brutos.</p>
+    <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
+      <a href="/fiscales/alcaldia" class="btn btn-outline btn-sm" style="text-decoration:none;">📄 Ver</a>
+      <button class="btn btn-outline btn-sm" onclick="exportarFiscal('fiscal_alcaldia')">📥 Excel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     SECCIÓN AUDITORÍA
+     ═══════════════════════════════════════════════════════ -->
+<h3 id="auditoria" style="margin:32px 0 12px;display:flex;align-items:center;gap:8px;">
+  <span style="font-size:20px;">📜</span> Auditoría
+  <span style="font-size:11px;color:var(--text-dim);font-weight:400;"> — {{ auditoria_total }} registros — Actividades recientes del sistema</span>
+</h3>
+
+<div class="card" style="padding:0;">
+  {% if auditoria_entries %}
+  <div style="overflow-x:auto;">
+    <table>
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Usuario</th>
+          <th>Acción</th>
+          <th>Detalle</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in auditoria_entries %}
+        <tr>
+          <td style="white-space:nowrap;">{{ e.fecha[:19] }}</td>
+          <td>{{ e.usuario }}</td>
+          <td>{{ e.accion }}</td>
+          <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;">{{ e.detalle }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% if auditoria_total_pages > 1 %}
+  <div class="pagination" style="display:flex;justify-content:center;gap:6px;padding:12px;">
+    {% if auditoria_page > 1 %}
+    <a href="?auditoria_page={{ auditoria_page - 1 }}#auditoria" class="btn btn-outline btn-sm" style="text-decoration:none;">← Anterior</a>
+    {% endif %}
+    <span style="padding:6px 12px;font-size:12px;color:var(--text-dim);">Pág {{ auditoria_page }} de {{ auditoria_total_pages }}</span>
+    {% if auditoria_page < auditoria_total_pages %}
+    <a href="?auditoria_page={{ auditoria_page + 1 }}#auditoria" class="btn btn-outline btn-sm" style="text-decoration:none;">Siguiente →</a>
+    {% endif %}
+  </div>
+  {% endif %}
+  {% else %}
+  <div style="padding:16px;text-align:center;color:var(--text-dim);font-size:13px;">
+    No hay registros de auditoría todavía.
+  </div>
+  {% endif %}
+</div>
+
+<!-- FEEDBACK / STATUS -->
+<div id="exportStatus" style="display:none;margin-top:20px;" class="card">
+  <div id="statusContent" style="display:flex;align-items:center;gap:14px;"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function getPeriodo() {
+    const d = document.getElementById('filtroDesde').value;
+    const h = document.getElementById('filtroHasta').value;
+    return d && h ? `?desde=${d}&hasta=${h}` : '';
+}
+
+function descargarPDF(slug) {
+    const periodo = getPeriodo();
+    window.location.href = `/reportes/pdf/${slug}${periodo}`;
+    return false;
+}
+
+function exportar(tipo) {
+    const status = document.getElementById('exportStatus');
+    const content = document.getElementById('statusContent');
+
+    status.style.display = 'block';
+    status.style.borderColor = 'rgba(243,156,18,0.4)';
+    content.innerHTML = '<span style="font-size:22px;">⏳</span><div><strong style="color:var(--yellow);">Generando reporte...</strong><br><span style="color:var(--text-dim);font-size:12px;">Por favor espera un momento.</span></div>';
+
+    document.querySelectorAll('.btn').forEach(b => b.disabled = true);
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/reportes/exportar';
+    form.style.display = 'none';
+
+    const input = document.createElement('input');
+    input.name = 'tipo';
+    input.value = tipo;
+    form.appendChild(input);
+
+    const d = document.getElementById('filtroDesde').value;
+    const h = document.getElementById('filtroHasta').value;
+    if (d && h) {
+        const inpD = document.createElement('input');
+        inpD.name = 'desde'; inpD.value = d;
+        form.appendChild(inpD);
+        const inpH = document.createElement('input');
+        inpH.name = 'hasta'; inpH.value = h;
+        form.appendChild(inpH);
+    }
+
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+
+    setTimeout(() => {
+        status.style.borderColor = 'rgba(46,204,113,0.4)';
+        content.innerHTML = `
+            <span style="font-size:22px;">✅</span>
+            <div style="flex:1;">
+                <strong style="color:var(--green);">¡Descarga iniciada!</strong><br>
+                <span style="color:var(--text-dim);font-size:12px;">
+                    Tu navegador te preguntará dónde guardar el archivo.
+                </span>
+            </div>
+        `;
+        document.querySelectorAll('.btn').forEach(b => b.disabled = false);
+    }, 1500);
+}
+
+function exportarFiscal(tipo) {
+    exportar(tipo);
+}
+
+function limpiarFiltro() {
+    document.getElementById('filtroDesde').value = '';
+    document.getElementById('filtroHasta').value = '';
+}
+</script>
+{% endblock %}

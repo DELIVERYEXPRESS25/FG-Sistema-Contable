@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% block title %}F&G — Reportes Excel{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h2>📤 Reportes Excel</h2>
+    <div class="subtitle">Exporta los estados financieros a archivos .xlsx en la carpeta reportes/</div>
+  </div>
+</div>
+
+<!-- STATS TOP -->
+<div class="grid-4" style="margin-bottom:24px;">
+  <div class="stat-card">
+    <div class="accent-bar" style="background:var(--accent);"></div>
+    <div class="label">Asientos Diario</div>
+    <div class="value">{{ diario|length }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="accent-bar" style="background:var(--accent2);"></div>
+    <div class="label">Cuentas Activas</div>
+    <div class="value">{{ cuentas|length }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="accent-bar" style="background:var(--green);"></div>
+    <div class="label">Utilidad Neta</div>
+    <div class="value money {% if utilidad >= 0 %}money-pos{% else %}money-neg{% endif %}">C$ {{ "%.2f"|format(utilidad) }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="accent-bar" style="background:var(--yellow);"></div>
+    <div class="label">Productos Kardex</div>
+    <div class="value">{{ kardex|length }}</div>
+  </div>
+</div>
+
+<!-- EXPORTAR TODOS (mega botón) -->
+<div class="card" style="border-color:rgba(79,140,255,0.35); background: linear-gradient(135deg, rgba(79,140,255,0.06), rgba(124,92,252,0.04)); margin-bottom:8px;">
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;">
+    <div>
+      <div class="card-title" style="margin-bottom:4px;"><span class="icon">📦</span> Exportar Todo en un solo archivo</div>
+      <p style="color:var(--text-dim); font-size:12px; margin:0;">
+        Genera un Excel con 5 hojas: Libro Diario, Libro Mayor, Balanza, Estado de Resultados y Balance General.
+      </p>
+    </div>
+    <button class="btn btn-primary" style="padding:12px 28px; font-size:14px;" onclick="exportar('todos')">
+      📥 Exportar Completo
+    </button>
+  </div>
+</div>
+
+<!-- GRILLA DE REPORTES INDIVIDUALES -->
+<div class="grid-2" style="margin-top:20px;">
+
+  <!-- Libro Diario -->
+  <div class="card" style="border-color:rgba(79,140,255,0.2);">
+    <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
+      <div>
+        <div class="card-title" style="margin-bottom:6px;"><span class="icon">🧾</span> Libro Diario</div>
+        <p style="color:var(--text-dim); font-size:12px; margin:0;">
+          {{ diario|length }} asientos registrados. Exporta el registro cronológico completo con todas las líneas de movimiento.
+        </p>
+      </div>
+      <button class="btn btn-outline" style="white-space:nowrap;" onclick="exportar('diario')">📥 Excel</button>
+    </div>
+  </div>
+
+  <!-- Libro Mayor -->
+  <div class="card" style="border-color:rgba(124,92,252,0.2);">
+    <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
+      <div>
+        <div class="card-title" style="margin-bottom:6px;"><span class="icon">📗</span> Libro Mayor</div>
+        <p style="color:var(--text-dim); font-size:12px; margin:0;">
+          {{ cuentas|length }} cuentas. Muestra debe, haber y saldo de cada cuenta en una tabla consolidada.
+        </p>
+      </div>
+      <button class="btn btn-outline" style="white-space:nowrap;" onclick="exportar('mayor')">📥 Excel</button>
+    </div>
+  </div>
+
+  <!-- Balanza de Comprobación -->
+  <div class="card" style="border-color:rgba(243,156,18,0.2);">
+    <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
+      <div>
+        <div class="card-title" style="margin-bottom:6px;"><span class="icon">⚖️</span> Balanza de Comprobación</div>
+        <p style="color:var(--text-dim); font-size:12px; margin:0;">
+          Verificación de débitos y créditos con saldos deudores y acreedores por cuenta.
+        </p>
+      </div>
+      <button class="btn btn-outline" style="white-space:nowrap;" onclick="exportar('balanza')">📥 Excel</button>
+    </div>
+  </div>
+
+  <!-- Estado de Resultados -->
+  <div class="card" style="border-color:rgba(46,204,113,0.2);">
+    <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
+      <div>
+        <div class="card-title" style="margin-bottom:6px;"><span class="icon">📊</span> Estado de Resultados</div>
+        <p style="color:var(--text-dim); font-size:12px; margin:0;">
+          Ingresos totales C$ {{ "%.2f"|format(total_ingresos) }} — Gastos C$ {{ "%.2f"|format(total_gastos) }} — Utilidad C$ {{ "%.2f"|format(utilidad) }}.
+        </p>
+      </div>
+      <button class="btn btn-outline" style="white-space:nowrap;" onclick="exportar('estado_resultados')">📥 Excel</button>
+    </div>
+  </div>
+
+  <!-- Balance General -->
+  <div class="card" style="border-color:rgba(231,76,60,0.2);">
+    <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
+      <div>
+        <div class="card-title" style="margin-bottom:6px;"><span class="icon">🏦</span> Balance General</div>
+        <p style="color:var(--text-dim); font-size:12px; margin:0;">
+          Activos C$ {{ "%.2f"|format(total_activo) }} = Pasivos C$ {{ "%.2f"|format(total_pasivo) }} + Capital C$ {{ "%.2f"|format(total_capital) }}.
+        </p>
+      </div>
+      <button class="btn btn-outline" style="white-space:nowrap;" onclick="exportar('balance_general')">📥 Excel</button>
+    </div>
+  </div>
+
+  <!-- Kardex PEPS --  >
+  <div class="card" style="border-color:rgba(155,89,182,0.2);">
+    <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
+      <div>
+        <div class="card-title" style="margin-bottom:6px;"><span class="icon">📦</span> Kardex PEPS</div>
+        <p style="color:var(--text-dim); font-size:12px; margin:0;">
+          {{ kardex|length }} productos. Método PEPS con lotes, costos y movimientos detallados.
+        </p>
+      </div>
+      <a href="/kardex" class="btn btn-primary" style="white-space:nowrap; text-decoration:none;">📊 Ver Kardex</a>
+    </div>
+  </div>
+
+  <!-- POS Historial (placeholder card) -->
+  <div class="card" style="border-color:rgba(79,140,255,0.15); opacity:0.7;">
+    <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:12px;">
+      <div>
+        <div class="card-title" style="margin-bottom:6px;"><span class="icon">🛒</span> Historial POS</div>
+        <p style="color:var(--text-dim); font-size:12px; margin:0;">
+          {{ pos_historial|length }} ventas registradas. Incluido automáticamente en el reporte completo.
+        </p>
+      </div>
+      <span class="badge badge-blue" style="white-space:nowrap;">En Completo</span>
+    </div>
+  </div>
+</div>
+
+<!-- FEEDBACK / STATUS -->
+<div id="exportStatus" style="display:none; margin-top:20px;" class="card">
+  <div id="statusContent" style="display:flex; align-items:center; gap:14px;"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function exportar(tipo) {
+    const status = document.getElementById('exportStatus');
+    const content = document.getElementById('statusContent');
+
+    // Mostrar "generando..."
+    status.style.display = 'block';
+    status.style.borderColor = 'rgba(243,156,18,0.4)';
+    content.innerHTML = '<span style="font-size:22px;">⏳</span><div><strong style="color:var(--yellow);">Generando reporte...</strong><br><span style="color:var(--text-dim);font-size:12px;">Por favor espera un momento.</span></div>';
+
+    // Deshabilitar todos los botones durante la exportación
+    document.querySelectorAll('.btn').forEach(b => b.disabled = true);
+
+    // Crear formulario oculto para enviar POST y descargar archivo
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = '/reportes/exportar';
+    form.style.display = 'none';
+    
+    const input = document.createElement('input');
+    input.name = 'tipo';
+    input.value = tipo;
+    form.appendChild(input);
+    
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+
+    // Dar feedback visual después de un momento
+    setTimeout(() => {
+        status.style.borderColor = 'rgba(46,204,113,0.4)';
+        content.innerHTML = `
+            <span style="font-size:22px;">✅</span>
+            <div style="flex:1;">
+                <strong style="color:var(--green);">¡Descarga iniciada!</strong><br>
+                <span style="color:var(--text-dim);font-size:12px;">
+                    Tu navegador te preguntará dónde guardar el archivo.
+                    Si no aparece, revisa la barra de descargas de tu navegador.
+                </span>
+            </div>
+        `;
+        document.querySelectorAll('.btn').forEach(b => b.disabled = false);
+    }, 1500);
+}
+</script>
+{% endblock %}

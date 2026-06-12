@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}F&G Sistema Contable{% endblock %}</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@300;400;500;600&display=swap');
+
+:root {
+    --bg: #0f1117;
+    --bg2: #161822;
+    --bg3: #1e2030;
+    --card: #1a1d2e;
+    --card-border: #2a2d42;
+    --accent: #4f8cff;
+    --accent2: #7c5cfc;
+    --green: #2ecc71;
+    --red: #e74c3c;
+    --yellow: #f39c12;
+    --text: #e2e4eb;
+    --text-dim: #7a7f99;
+    --text-bright: #ffffff;
+    --sidebar-w: 240px;
+}
+body.light {
+    --bg: #f5f6fa;
+    --bg2: #ffffff;
+    --bg3: #eef0f6;
+    --card: #ffffff;
+    --card-border: #d0d3e0;
+    --text: #2d2d3f;
+    --text-dim: #6b7080;
+    --text-bright: #0f1117;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    overflow-x: hidden;
+}
+
+/* ══════════════════════════════════════════════════════
+   SIDEBAR
+   ══════════════════════════════════════════════════════ */
+.sidebar {
+    width: var(--sidebar-w);
+    height: 100vh;                          /* altura fija = pantalla */
+    background: var(--bg2);
+    border-right: 1px solid var(--card-border);
+    position: fixed;
+    top: 0; left: 0;
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+    overflow: hidden;                       /* evita doble scroll */
+}
+
+/* zona de navs: crece y hace scroll si no caben */
+.sidebar-nav {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+/* scrollbar fino dentro del sidebar */
+.sidebar-nav::-webkit-scrollbar { width: 4px; }
+.sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+.sidebar-nav::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 2px; }
+
+.sidebar-logo {
+    padding: 24px 20px 18px;
+    border-bottom: 1px solid var(--card-border);
+    text-align: center;
+    flex-shrink: 0;                         /* nunca se comprime */
+}
+.sidebar-logo .fg-icon {
+    width: 48px; height: 48px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 14px;
+    margin: 0 auto 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; font-weight: 700; color: #fff;
+    box-shadow: 0 4px 18px rgba(79,140,255,0.3);
+}
+.sidebar-logo h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px; font-weight: 700;
+    color: var(--text-bright);
+    letter-spacing: 2px;
+}
+
+.nav-section {
+    padding: 14px 14px 4px;
+    font-size: 9px; font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+}
+.nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 16px;
+    margin: 1px 8px;
+    border-radius: 8px;
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 13px; font-weight: 500;
+    transition: all .2s;
+    white-space: nowrap;
+}
+.nav-item:hover {
+    background: var(--bg3);
+    color: var(--text-bright);
+}
+.nav-item.active {
+    background: linear-gradient(135deg, rgba(79,140,255,0.15), rgba(124,92,252,0.1));
+    color: var(--accent);
+    border: 1px solid rgba(79,140,255,0.2);
+}
+.nav-item .icon { font-size: 15px; width: 18px; text-align: center; }
+
+.sidebar-bottom {
+    flex-shrink: 0;                         /* nunca se comprime */
+    padding: 12px;
+    border-top: 1px solid var(--card-border);
+}
+.btn-apagar {
+    width: 100%;
+    padding: 9px;
+    background: rgba(231,76,60,0.12);
+    border: 1px solid rgba(231,76,60,0.3);
+    border-radius: 8px;
+    color: var(--red);
+    font-size: 12px; font-weight: 600;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+    transition: all .2s;
+    font-family: 'Inter', sans-serif;
+}
+.btn-apagar:hover { background: rgba(231,76,60,0.22); }
+
+/* ══════════════════════════════════════════════════════
+   MAIN
+   ══════════════════════════════════════════════════════ */
+.main {
+    margin-left: var(--sidebar-w);
+    flex: 1;
+    padding: 28px 32px;
+    min-height: 100vh;
+}
+
+/* ══════════════════════════════════════════════════════
+   PAGE HEADER
+   ══════════════════════════════════════════════════════ */
+.page-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    margin-bottom: 24px;
+}
+.page-header h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 26px; font-weight: 700;
+    color: var(--text-bright);
+}
+.page-header .subtitle {
+    font-size: 12px; color: var(--text-dim); margin-top: 4px;
+}
+
+/* ══════════════════════════════════════════════════════
+   CARDS
+   ══════════════════════════════════════════════════════ */
+.card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    padding: 22px;
+    margin-bottom: 22px;
+}
+.card-title {
+    font-size: 13px; font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+}
+.card-title .icon { font-size: 15px; }
+
+/* ══════════════════════════════════════════════════════
+   GRIDS
+   ══════════════════════════════════════════════════════ */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+.grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 18px; }
+
+/* ══════════════════════════════════════════════════════
+   STAT CARDS
+   ══════════════════════════════════════════════════════ */
+.stat-card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 14px;
+    padding: 20px;
+    position: relative; overflow: hidden;
+}
+.stat-card .accent-bar {
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
+}
+.stat-card .label { font-size: 11px; color: var(--text-dim); font-weight: 500; text-transform: uppercase; letter-spacing: 1px; }
+.stat-card .value { font-size: 22px; font-weight: 700; color: var(--text-bright); margin-top: 6px; }
+.stat-card .trend { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+.stat-card .trend.up { color: var(--green); }
+.stat-card .trend.down { color: var(--red); }
+
+/* ══════════════════════════════════════════════════════
+   TABLES
+   ══════════════════════════════════════════════════════ */
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead th {
+    text-align: left; padding: 10px 14px;
+    font-size: 10px; font-weight: 600;
+    color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 1px;
+    border-bottom: 1px solid var(--card-border);
+    background: rgba(255,255,255,0.02);
+    white-space: nowrap;
+}
+tbody td {
+    padding: 11px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    color: var(--text);
+}
+tbody tr:hover { background: rgba(255,255,255,0.025); }
+tbody tr:last-child td { border-bottom: none; }
+
+.badge {
+    display: inline-block; padding: 3px 10px;
+    border-radius: 20px; font-size: 11px; font-weight: 600;
+    white-space: nowrap;
+}
+.badge-green { background: rgba(46,204,113,0.15); color: var(--green); }
+.badge-yellow { background: rgba(243,156,18,0.15); color: var(--yellow); }
+.badge-red { background: rgba(231,76,60,0.15); color: var(--red); }
+.badge-blue { background: rgba(79,140,255,0.15); color: var(--accent); }
+
+/* ══════════════════════════════════════════════════════
+   FORMS
+   ══════════════════════════════════════════════════════ */
+.form-row {
+    display: flex; gap: 12px; flex-wrap: wrap;
+    align-items: flex-end;
+}
+.form-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 140px; }
+.form-group label { font-size: 11px; color: var(--text-dim); font-weight: 600; letter-spacing: 0.5px; }
+.form-group input, .form-group select {
+    background: var(--bg3);
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 9px 12px;
+    color: var(--text-bright);
+    font-size: 13px;
+    font-family: 'Inter', sans-serif;
+    outline: none; transition: border .2s;
+}
+.form-group input:focus, .form-group select:focus { border-color: var(--accent); }
+.form-group select {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%237a7f99' stroke-width='1.5'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 30px;
+}
+
+/* ══════════════════════════════════════════════════════
+   BUTTONS
+   ══════════════════════════════════════════════════════ */
+.btn {
+    padding: 9px 20px;
+    border-radius: 8px;
+    border: none;
+    font-size: 13px; font-weight: 600;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    transition: all .2s;
+    display: inline-flex; align-items: center; gap: 6px;
+}
+.btn-primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: #fff;
+    box-shadow: 0 3px 12px rgba(79,140,255,0.3);
+}
+.btn-primary:hover { box-shadow: 0 4px 18px rgba(79,140,255,0.45); transform: translateY(-1px); }
+.btn-success { background: rgba(46,204,113,0.15); color: var(--green); border: 1px solid rgba(46,204,113,0.3); }
+.btn-success:hover { background: rgba(46,204,113,0.25); }
+.btn-outline { background: transparent; color: var(--text-dim); border: 1px solid var(--card-border); }
+.btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ══════════════════════════════════════════════════════
+   CHARTS
+   ══════════════════════════════════════════════════════ */
+.chart-container { position: relative; height: 220px; margin-top: 10px; }
+canvas { max-width: 100%; }
+
+/* ══════════════════════════════════════════════════════
+   MONEY
+   ══════════════════════════════════════════════════════ */
+.money { font-weight: 600; font-variant-numeric: tabular-nums; }
+.money-pos { color: var(--green); }
+.money-neg { color: var(--red); }
+.money-neutral { color: var(--text-bright); }
+
+/* ══════════════════════════════════════════════════════
+   SCROLLBAR GLOBAL
+   ══════════════════════════════════════════════════════ */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 3px; }
+
+/* Botones de base de datos en sidebar */
+.db-buttons {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding: 8px 0;
+}
+
+.db-buttons .btn-outline {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.db-buttons .btn-outline:hover {
+  background: rgba(79,140,255,0.15);
+  color: var(--accent);
+  transform: scale(1.05);
+}
+
+.db-buttons .btn-apagar {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Tooltips para los botones */
+.db-buttons button[title] {
+  position: relative;
+}
+
+.db-buttons button[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.8);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  white-space: nowrap;
+  z-index: 1000;
+  margin-bottom: 8px;
+}
+
+/* ══════════════════════════════════════════════════════
+   MODAL
+   ══════════════════════════════════════════════════════ */
+.modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5); z-index: 500;
+    align-items: center; justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal-box {
+    background: var(--card); border: 1px solid var(--card-border);
+    border-radius: 16px; padding: 30px; max-width: 380px; width: 90%;
+    text-align: center;
+}
+.modal-box h3 { color: var(--text-bright); margin-bottom: 10px; font-size: 18px; }
+.modal-box p { color: var(--text-dim); font-size: 13px; margin-bottom: 20px; }
+.modal-btns { display: flex; gap: 10px; justify-content: center; }
+
+/* ══════════════════════════════════════════════════════
+   APAGAR PAGE
+   ══════════════════════════════════════════════════════ */
+.apagar-page {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; background: var(--bg); flex-direction: column; gap: 20px;
+}
+.apagar-page .icon-big { font-size: 60px; }
+.apagar-page h2 { color: var(--text-bright); font-family: 'Playfair Display', serif; }
+.apagar-page p { color: var(--text-dim); font-size: 14px; }
+
+/* ══════════════════════════════════════════════════════
+   TOTALS ROW
+   ══════════════════════════════════════════════════════ */
+.totals-row td { font-weight: 700; color: var(--text-bright) !important; background: rgba(255,255,255,0.04) !important; border-top: 2px solid var(--card-border) !important; }
+
+/* ══════════════════════════════════════════════════════
+   HAMBURGER
+   ══════════════════════════════════════════════════════ */
+.hamburger {
+    display: none;
+    position: fixed; top: 12px; left: 12px; z-index: 200;
+    width: 42px; height: 42px;
+    background: var(--card); border: 1px solid var(--card-border);
+    border-radius: 10px;
+    flex-direction: column; align-items: center; justify-content: center; gap: 5px;
+    cursor: pointer;
+    transition: background .2s;
+}
+.hamburger:hover { background: var(--bg3); }
+.hamburger span { display:block; width:20px; height:2px; background:var(--text); border-radius:2px; transition:.25s; }
+.hamburger.active span:nth-child(1) { transform: rotate(45deg) translate(5px,5px); }
+.hamburger.active span:nth-child(2) { opacity:0; }
+.hamburger.active span:nth-child(3) { transform: rotate(-45deg) translate(5px,-5px); }
+
+/* ══════════════════════════════════════════════════════
+   OVERLAY MOBILE
+   ══════════════════════════════════════════════════════ */
+.sidebar-overlay {
+    display:none; position:fixed; inset:0;
+    background:rgba(0,0,0,0.55); z-index:90;
+}
+.sidebar-overlay.show { display:block; }
+
+/* ══════════════════════════════════════════════════════
+   RESPONSIVE — 1024px
+   ══════════════════════════════════════════════════════ */
+@media (max-width: 1024px) {
+    .grid-4 { grid-template-columns: 1fr 1fr; }
+    .grid-3 { grid-template-columns: 1fr 1fr; }
+}
+
+/* ══════════════════════════════════════════════════════
+   RESPONSIVE — 768px  (tablet / móvil grande)
+   ══════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+    /* hamburger aparece */
+    .hamburger { display: flex; }
+
+    /* sidebar: se convierte en overlay deslizante */
+    .sidebar {
+        transform: translateX(-100%);
+        transition: transform .28s cubic-bezier(.4,0,.2,1);
+        width: 260px;
+        height: 100vh;
+    }
+    .sidebar.open { transform: translateX(0); }
+
+    /* main: ocupa todo el ancho */
+    .main {
+        margin-left: 0;
+        padding: 68px 16px 24px;
+    }
+
+    /* header apilado */
+    .page-header { flex-direction: column; gap: 8px; }
+    .page-header h2 { font-size: 22px; }
+
+    /* grids → una columna */
+    .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+
+    /* stat cards más compactas */
+    .stat-card { padding: 16px; }
+    .stat-card .value { font-size: 20px; }
+
+    /* tablas: scroll horizontal suave */
+    .card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { min-width: 480px; }
+
+    /* forms: se apilan */
+    .form-row { flex-direction: column; }
+    .form-group { min-width: unset; width: 100%; max-width: unset !important; }
+
+    /* líneas de movimiento: 2 columnas en mobile */
+    .mov-line { flex-wrap: wrap !important; }
+    .mov-line .form-group { flex: 1 1 calc(50% - 10px) !important; max-width: unset !important; min-width: 120px; }
+
+    /* gráficos más cortos */
+    .chart-container { height: 180px; }
+
+    /* botones full-width dentro de form-row */
+    .form-row .btn { width: 100%; justify-content: center; }
+}
+
+/* ══════════════════════════════════════════════════════
+   RESPONSIVE — 480px  (móvil pequeño)
+   ══════════════════════════════════════════════════════ */
+@media (max-width: 480px) {
+    .main { padding: 62px 10px 20px; }
+
+    .card { padding: 14px; border-radius: 10px; }
+    .stat-card { padding: 14px; border-radius: 10px; }
+    .stat-card .value { font-size: 18px; }
+    .stat-card .label { font-size: 10px; }
+
+    table { min-width: 420px; font-size: 12px; }
+    thead th, tbody td { padding: 8px 10px; }
+
+    .page-header h2 { font-size: 19px; }
+    .card-title { font-size: 11px; }
+
+    .btn { font-size: 12px; padding: 8px 14px; }
+
+    .chart-container { height: 160px; }
+
+    /* nav items un poco más compactos en sidebar */
+    .nav-item { padding: 8px 14px; font-size: 12px; gap: 8px; }
+    .nav-section { padding: 12px 14px 3px; font-size: 9px; }
+    .sidebar-logo { padding: 18px 16px 14px; }
+    .sidebar-logo .fg-icon { width: 42px; height: 42px; font-size: 18px; }
+    .sidebar-logo h1 { font-size: 18px; }
+}
+
+/* ══════════════════════════════════════════════════════
+   RESPONSIVE — 360px  (móvil muy pequeño)
+   ══════════════════════════════════════════════════════ */
+@media (max-width: 360px) {
+    .main { padding: 58px 8px 16px; }
+    .card { padding: 12px; }
+    table { min-width: 360px; font-size: 11px; }
+    thead th, tbody td { padding: 7px 8px; }
+    .stat-card .value { font-size: 16px; }
+    .hamburger { width: 38px; height: 38px; top: 8px; left: 8px; }
+}
+</style>
+{% block head %}{% endblock %}
+</head>
+<body>
+
+<!-- HAMBURGER -->
+<button class="hamburger" id="hamburger" onclick="toggleSidebar()">
+  <span></span><span></span><span></span>
+</button>
+<!-- OVERLAY -->
+<div class="sidebar-overlay" id="sideOverlay" onclick="toggleSidebar()"></div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <img src="/static/logo_fg.jpg" alt="F&G" style="width:60px; height:60px; border-radius:50%; object-fit:cover; border:3px solid var(--accent);">
+    <div style="text-align:center;">
+      <h1 style="font-size:18px; margin:8px 0 2px 0;">F &amp; G</h1>
+    </div>
+  </div>
+
+  <!-- zona scrollable de navs -->
+  <div class="sidebar-nav">
+    <div class="nav-section">Registro</div>
+    <a href="/" class="nav-item {% if request.path == '/' %}active{% endif %}">
+      <span class="icon">🏠</span> Dashboard
+    </a>
+    <a href="/catalogar" class="nav-item {% if request.path == '/catalogar' %}active{% endif %}">
+      <span class="icon">📘</span> Catálogo de Cuentas
+    </a>
+    <a href="/diario" class="nav-item {% if request.path == '/diario' %}active{% endif %}">
+      <span class="icon">🧾</span> Libro Diario
+    </a>
+    <a href="/ajustes" class="nav-item {% if request.path == '/ajustes' %}active{% endif %}">
+      <span class="icon">📝</span> Asientos de Ajuste
+    </a>
+
+    <div class="nav-section">Análisis & Reportes</div>
+    <a href="/auxiliar-diario" class="nav-item {% if request.path == '/auxiliar-diario' %}active{% endif %}">
+      <span class="icon">📋</span> Auxiliar Diario
+    </a>
+    <a href="/mayor" class="nav-item {% if request.path == '/mayor' %}active{% endif %}">
+      <span class="icon">📗</span> Libro Mayor
+    </a>
+    <a href="/balanza" class="nav-item {% if request.path == '/balanza' %}active{% endif %}">
+      <span class="icon">⚖️</span> Balanza de Comprobación
+    </a>
+    <a href="/estado_resultados" class="nav-item {% if request.path == '/estado_resultados' %}active{% endif %}">
+      <span class="icon">📊</span> Estado de Resultados
+    </a>
+    <a href="/balance_general" class="nav-item {% if request.path == '/balance_general' %}active{% endif %}">
+      <span class="icon">🏦</span> Balance General
+    </a>
+    <a href="/reportes" class="nav-item {% if request.path == '/reportes' %}active{% endif %}">
+      <span class="icon">📤</span> Reportes
+    </a>
+    <a href="/cierre-mensual" class="nav-item {% if request.path == '/cierre-mensual' %}active{% endif %}">
+      <span class="icon">📆</span> Cierre Mensual
+    </a>
+
+    <div class="nav-section">Gestión</div>
+    <a href="/pos" class="nav-item {% if request.path == '/pos' %}active{% endif %}">
+      <span class="icon">🛒</span> Ventas POS
+    </a>
+    <a href="/kardex" class="nav-item {% if request.path == '/kardex' %}active{% endif %}">
+      <span class="icon">📦</span> Tarjetas Kardex
+    </a>
+    <a href="/cobrar" class="nav-item {% if request.path == '/cobrar' %}active{% endif %}">
+      <span class="icon">💳</span> Cuentas por Cobrar
+    </a>
+    <a href="/caja" class="nav-item {% if request.path == '/caja' %}active{% endif %}">
+      <span class="icon">💰</span> Auxiliar de Caja
+    </a>
+    <a href="/comercializacion" class="nav-item {% if request.path == '/comercializacion' %}active{% endif %}">
+      <span class="icon">📣</span> Gastos Comercializ.
+    </a>
+  </div><!-- fin sidebar-nav -->
+
+<div class="sidebar-bottom">
+  <div style="display:flex;align-items:center;gap:8px;padding:4px 12px 8px;">
+    {% if auth_enabled %}
+    <span style="font-size:12px;color:var(--text-dim);">👤 {{ g.get('user', session.get('user', 'invitado')) }}</span>
+    <a href="#" onclick="document.getElementById('modalPassword').classList.add('show');return false;" style="font-size:11px;color:var(--accent);text-decoration:none;">🔑</a>
+    <a href="/logout" style="font-size:11px;color:var(--red);text-decoration:none;margin-left:auto;">🔓 Salir</a>
+    {% endif %}
+    <button id="themeToggle" style="background:none;border:none;cursor:pointer;font-size:16px;padding:2px;line-height:1;" title="Cambiar tema">🌙</button>
+  </div>
+  <div class="db-buttons">
+    <button class="btn-outline btn-sm" id="btnBackupJSON" title="💾 Backup JSON">💾</button>
+    <button class="btn-outline btn-sm" id="btnCopiaDB" title="💿 Copia DB">💿</button>
+    <button class="btn-outline btn-sm" id="btnImportarDB" title="🪣 Importar DB">🪣</button>
+    <button class="btn-outline btn-sm" id="btnVerDB" title="🔍 Ver DB">🔍</button>
+    <button class="btn-outline btn-sm" id="btnRestaurar" title="📁 Restaurar">📁</button>
+    <button class="btn-outline btn-sm" id="btnBorrarTodo" title="🗑️ Borrar Todo">🗑️</button>
+    <button class="btn-apagar" onclick="document.getElementById('modalApagar').classList.add('show')" title="🔴 Apagar">🔴</button>
+  </div>
+</div>
+</aside>
+
+<!-- MODAL APAGAR -->
+<div class="modal-overlay" id="modalApagar">
+  <div class="modal-box">
+    <h3>⚠️ Apagar Servidor</h3>
+    <p>¿Estás seguro que quieres apagar el servidor? Los datos están guardados.</p>
+    <div class="modal-btns">
+      <button class="btn btn-outline" onclick="document.getElementById('modalApagar').classList.remove('show')">Cancelar</button>
+      <form method="POST" action="/apagar" style="display:inline">
+        <button class="btn" style="background:var(--red);color:#fff;" type="submit">Apagar</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL CAMBIAR CONTRASEÑA -->
+{% if auth_enabled %}
+<div class="modal-overlay" id="modalPassword">
+  <div class="modal-box" style="max-width:360px;">
+    <h3>🔑 Cambiar Contraseña</h3>
+    <form method="POST" action="/cambiar-password" style="text-align:left;">
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>Contraseña actual</label>
+        <input type="password" name="actual" required>
+      </div>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>Nueva contraseña</label>
+        <input type="password" name="nueva" required minlength="4">
+      </div>
+      <div class="form-group" style="margin-bottom:16px;">
+        <label>Confirmar nueva contraseña</label>
+        <input type="password" name="confirmar" required minlength="4">
+      </div>
+      <div class="modal-btns">
+        <button type="button" class="btn btn-outline" onclick="document.getElementById('modalPassword').classList.remove('show')">Cancelar</button>
+        <button type="submit" class="btn btn-primary">💾 Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<!-- TOASTS -->
+{% set msgs = {'password_actualizada': '✅ Contraseña actualizada correctamente',
+               'password_actual_incorrecta': '❌ La contraseña actual no es correcta',
+               'password_muy_corta': '❌ La nueva contraseña debe tener al menos 4 caracteres',
+               'password_no_coinciden': '❌ Las contraseñas nuevas no coinciden'} %}
+{% if request.args.get('ok') and request.args.get('ok') in msgs %}
+<div style="position:fixed;bottom:20px;right:20px;background:var(--green);color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,0.3);">
+  {{ msgs[request.args.get('ok')] }}
+</div>
+{% elif request.args.get('error') and request.args.get('error') in msgs %}
+<div style="position:fixed;bottom:20px;right:20px;background:var(--red);color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,0.3);">
+  {{ msgs[request.args.get('error')] }}
+</div>
+{% endif %}
+<script>
+// Auto-dismiss toasts after 4s
+setTimeout(function() {
+  document.querySelectorAll('[style*="position:fixed;bottom:20px"]').forEach(function(el) {
+    el.style.transition = 'opacity 0.5s';
+    el.style.opacity = '0';
+    setTimeout(function() { el.remove(); }, 500);
+  });
+}, 4000);
+</script>
+
+<!-- MAIN -->
+<main class="main">
+  {% block content %}{% endblock %}
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% block scripts %}{% endblock %}
+<script>
+function toggleSidebar() {
+    document.querySelector('.sidebar').classList.toggle('open');
+    document.getElementById('sideOverlay').classList.toggle('show');
+    document.getElementById('hamburger').classList.toggle('active');
+}
+// cerrar sidebar al hacer clic en nav (mobile)
+document.querySelectorAll('.nav-item').forEach(a => {
+    a.addEventListener('click', () => {
+        if (window.innerWidth <= 768) {
+            document.querySelector('.sidebar').classList.remove('open');
+            document.getElementById('sideOverlay').classList.remove('show');
+            document.getElementById('hamburger').classList.remove('active');
+        }
+    });
+});
+
+// Botones de base de datos
+document.getElementById('btnBackupJSON').addEventListener('click', function() {
+    fetch('/api/backup_json')
+        .then(r => r.blob())
+        .then(blob => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'fg_backup_' + new Date().toISOString().slice(0,10) + '.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+});
+
+document.getElementById('btnCopiaDB').addEventListener('click', function() {
+    fetch('/api/copia_db')
+        .then(r => r.blob())
+        .then(blob => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'fg_db_' + new Date().toISOString().slice(0,10) + '.db';
+            a.click();
+            URL.revokeObjectURL(url);
+        });
+});
+
+document.getElementById('btnImportarDB').addEventListener('click', function() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.db';
+    input.onchange = e => {
+        const file = e.target.files[0];
+        const formData = new FormData();
+        formData.append('archivo', file);
+        fetch('/api/importar_db', { method: 'POST', body: formData })
+            .then(r => r.json())
+            .then(data => {
+                if(data.ok) alert('Base de datos importada correctamente');
+                else alert('Error: ' + data.error);
+            });
+    };
+    input.click();
+});
+
+document.getElementById('btnVerDB').addEventListener('click', function() {
+    fetch('/api/ver_db').then(r => r.text()).then(html => {
+        const win = window.open('', '_blank');
+        win.document.write(html);
+    });
+});
+
+document.getElementById('btnRestaurar').addEventListener('click', function() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = e => {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = evt => {
+            fetch('/api/restaurar_json', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: evt.target.result
+            }).then(r => r.json()).then(data => {
+                if(data.ok) { alert('Restaurado correctamente'); location.reload(); }
+                else alert('Error: ' + data.error);
+            });
+        };
+        reader.readAsText(file);
+    };
+    input.click();
+});
+
+document.getElementById('btnBorrarTodo').addEventListener('click', function() {
+    if(confirm('¿Estás seguro de BORRAR TODOS LOS DATOS? Esta acción no se puede deshacer.')) {
+        if(confirm('¡REALMENTE BORRAR TODO? Se eliminará toda la información.')) {
+            fetch('/api/borrar_todo', { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    if(data.ok) { alert('Datos borrados'); location.reload(); }
+                    else alert('Error: ' + data.error);
+                });
+        }
+    }
+});
+
+// ─── Tema oscuro/claro ─────────────────────────
+(function() {
+    const btn = document.getElementById('themeToggle');
+    const key = 'fg_theme';
+    const stored = localStorage.getItem(key);
+    if (stored === 'light') {
+        document.body.classList.add('light');
+        btn.textContent = '☀️';
+    }
+    btn.addEventListener('click', function() {
+        const isLight = document.body.classList.toggle('light');
+        btn.textContent = isLight ? '☀️' : '🌙';
+        localStorage.setItem(key, isLight ? 'light' : 'dark');
+    });
+})();
+</script>
+</body>
+</html>

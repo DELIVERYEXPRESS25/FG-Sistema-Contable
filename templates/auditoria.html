@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}F&G — Auditoría{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h2>📋 Log de Auditoría</h2>
+    <div class="subtitle">Registro cronológico de todas las acciones realizadas en el sistema</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title"><span class="icon">📜</span> Registro de Actividades</div>
+  {% if entries %}
+  <table>
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Usuario</th>
+        <th>Acción</th>
+        <th>Detalle</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for e in entries %}
+      <tr>
+        <td style="white-space:nowrap;color:var(--text-dim);font-size:12px;">{{ e.fecha[:19] }}</td>
+        <td><span class="badge badge-blue">{{ e.usuario }}</span></td>
+        <td><span class="badge {% if 'error' in e.accion or 'borrar' in e.accion %}badge-red{% elif 'crear' in e.accion or 'pagar' in e.accion %}badge-green{% else %}badge-yellow{% endif %}">{{ e.accion }}</span></td>
+        <td style="font-size:13px;">{{ e.detalle }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if total_pages > 1 %}
+  <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:16px;">
+    <a href="/auditoria?page=1" class="btn btn-outline" style="padding:6px 12px;font-size:11px;text-decoration:none;">««</a>
+    <a href="/auditoria?page={{ page-1 }}" class="btn btn-outline" style="padding:6px 12px;font-size:11px;text-decoration:none;{{ 'visibility:hidden' if page <= 1 }}">«</a>
+    {% set sp = [1, page-2]|max %}
+    {% set ep = [total_pages+1, page+3]|min %}
+    {% for p in range(sp, ep) %}
+    <a href="/auditoria?page={{ p }}" class="btn {{ 'btn-primary' if p == page else 'btn-outline' }}" style="padding:6px 12px;font-size:11px;text-decoration:none;">{{ p }}</a>
+    {% endfor %}
+    <a href="/auditoria?page={{ page+1 }}" class="btn btn-outline" style="padding:6px 12px;font-size:11px;text-decoration:none;{{ 'visibility:hidden' if page >= total_pages }}">»</a>
+    <a href="/auditoria?page={{ total_pages }}" class="btn btn-outline" style="padding:6px 12px;font-size:11px;text-decoration:none;">»»</a>
+    <span style="font-size:11px;color:var(--text-dim);">Pág {{ page }}/{{ total_pages }}</span>
+  </div>
+  {% endif %}
+  {% else %}
+  <p style="color:var(--text-dim);text-align:center;padding:40px;">No hay registros de auditoría aún. Las acciones se registran automáticamente al crear, editar o eliminar datos.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}F&G — Libro Mayor{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h2>📗 Libro Mayor</h2>
+    <div class="subtitle">Cuentas T — Traslado automático desde el Diario + Ajustes</div>
+  </div>
+</div>
+
+{% set tipos_orden = ["Activo", "Pasivo", "Capital", "Ingreso", "Gasto"] %}
+{% for tipo in tipos_orden %}
+  {% set found = [] %}
+  {% for codigo in cuentas.keys()|sort %}
+    {% if cuentas[codigo].tipo == tipo and codigo in mayor %}
+      {% if found.append(1) %}{% endif %}
+    {% endif %}
+  {% endfor %}
+
+  {% if found|length > 0 %}
+  <div style="margin-bottom:6px;">
+    <span class="badge {% if tipo=='Activo' %}badge-blue{% elif tipo=='Pasivo' %}badge-red{% elif tipo=='Capital' %}badge-green{% elif tipo=='Ingreso' %}badge-green{% else %}badge-yellow{% endif %}" style="font-size:11px;padding:4px 12px;">{{ tipo.upper() }}</span>
+  </div>
+  <div class="grid-2" style="margin-bottom:22px;">
+    {% for codigo in cuentas.keys()|sort %}
+      {% if cuentas[codigo].tipo == tipo and codigo in mayor %}
+      {% set cuenta = mayor[codigo] %}
+      {% set info = cuentas[codigo] %}
+      <div class="card" style="padding:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <div>
+            <span class="badge badge-blue" style="font-size:10px;">{{ codigo }}</span>
+            <strong style="color:var(--text-bright);font-size:14px;margin-left:8px;">{{ info.nombre }}</strong>
+          </div>
+          {% set saldo_n = cuenta.debe - cuenta.haber if info.tipo in ['Activo','Gasto'] else cuenta.haber - cuenta.debe %}
+          <span class="money {% if saldo_n >= 0 %}money-pos{% else %}money-neg{% endif %}" style="font-size:13px;">
+            Saldo: C$ {{ "%.2f"|format(saldo_n|abs) }} {{ '(D)' if (info.tipo in ['Activo','Gasto']) else '(H)' }}
+          </span>
+        </div>
+
+        <!-- T-Account visual -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--card-border);border-radius:8px;overflow:hidden;font-size:11px;">
+          <div style="background:rgba(46,204,113,0.06);padding:6px 10px;border-right:1px solid var(--card-border);">
+            <div style="font-weight:700;color:var(--green);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px;">Debe</div>
+            {% for mov in cuenta.movimientos %}
+              {% if mov.tipo == 'Debe' %}
+              <div style="display:flex;justify-content:space-between;padding:3px 0;color:var(--text-dim);">
+                <span style="font-size:10px;">{{ mov.fecha }} {{ mov.ref }}</span>
+                <span class="money" style="color:var(--green);">{{ "%.2f"|format(mov.monto) }}</span>
+              </div>
+              {% endif %}
+            {% endfor %}
+            <div style="border-top:1px solid rgba(46,204,113,0.3);margin-top:4px;padding-top:4px;text-align:right;font-weight:700;color:var(--green);">{{ "%.2f"|format(cuenta.debe) }}</div>
+          </div>
+          <div style="background:rgba(231,76,60,0.06);padding:6px 10px;">
+            <div style="font-weight:700;color:var(--red);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px;">Haber</div>
+            {% for mov in cuenta.movimientos %}
+              {% if mov.tipo == 'Haber' %}
+              <div style="display:flex;justify-content:space-between;padding:3px 0;color:var(--text-dim);">
+                <span style="font-size:10px;">{{ mov.fecha }} {{ mov.ref }}</span>
+                <span class="money" style="color:var(--red);">{{ "%.2f"|format(mov.monto) }}</span>
+              </div>
+              {% endif %}
+            {% endfor %}
+            <div style="border-top:1px solid rgba(231,76,60,0.3);margin-top:4px;padding-top:4px;text-align:right;font-weight:700;color:var(--red);">{{ "%.2f"|format(cuenta.haber) }}</div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+{% endfor %}
+
+{% if mayor|length == 0 %}
+<div class="card">
+  <p style="color:var(--text-dim);text-align:center;padding:40px;">El Mayor se pobla automáticamente cuando registres asientos en el Diario.</p>
+</div>
+{% endif %}
+{% endblock %}

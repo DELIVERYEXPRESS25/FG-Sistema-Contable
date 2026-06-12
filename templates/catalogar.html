@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}F&G — Catálogo de Cuentas{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h2>Catálogo de Cuentas</h2>
+    <div class="subtitle">{{ cuentas|length }} cuentas registradas</div>
+  </div>
+</div>
+
+{% if request.args.get('ok') == 'cuenta_eliminada' %}
+<div class="alert alert-success" style="background:rgba(46,204,113,0.12);border:1px solid rgba(46,204,113,0.3);border-radius:10px;padding:12px 18px;margin-bottom:18px;color:var(--green);font-weight:600;">
+  Cuenta eliminada correctamente.
+</div>
+{% endif %}
+{% if request.args.get('ok') == 'cuenta_guardada' %}
+<div class="alert alert-success" style="background:rgba(46,204,113,0.12);border:1px solid rgba(46,204,113,0.3);border-radius:10px;padding:12px 18px;margin-bottom:18px;color:var(--green);font-weight:600;">
+  Cuenta guardada correctamente.
+</div>
+{% endif %}
+{% if request.args.get('error') == 'no_se_puede_eliminar_cuenta_con_movimientos' %}
+<div class="alert alert-danger" style="background:rgba(231,76,60,0.12);border:1px solid rgba(231,76,60,0.3);border-radius:10px;padding:12px 18px;margin-bottom:18px;color:var(--red);font-weight:600;">
+  No se puede eliminar esta cuenta porque tiene movimientos registrados.
+</div>
+{% endif %}
+{% if request.args.get('error') == 'cuenta_no_existe' %}
+<div class="alert alert-danger" style="background:rgba(231,76,60,0.12);border:1px solid rgba(231,76,60,0.3);border-radius:10px;padding:12px 18px;margin-bottom:18px;color:var(--red);font-weight:600;">
+  La cuenta no existe.
+</div>
+{% endif %}
+{% if request.args.get('error') == 'codigo_invalido' %}
+<div class="alert alert-danger" style="background:rgba(231,76,60,0.12);border:1px solid rgba(231,76,60,0.3);border-radius:10px;padding:12px 18px;margin-bottom:18px;color:var(--red);font-weight:600;">
+  Código inválido o ya existe.
+</div>
+{% endif %}
+
+<!-- NUEVA CUENTA -->
+<div class="card" style="border-color:rgba(79,140,255,0.35);margin-bottom:18px;">
+  <div class="card-title"><span class="icon">➕</span> Nueva Cuenta</div>
+  <form method="POST" action="/catalogar/nueva" style="display:grid;grid-template-columns:140px 1fr 150px auto;gap:10px;align-items:end;">
+    <div class="form-group" style="margin:0;">
+      <label>Código</label>
+      <input type="text" name="codigo" placeholder="Ej: 1001" required style="width:100%;">
+    </div>
+    <div class="form-group" style="margin:0;">
+      <label>Nombre</label>
+      <input type="text" name="nombre" placeholder="Nombre de la cuenta" required style="width:100%;">
+    </div>
+    <div class="form-group" style="margin:0;">
+      <label>Tipo</label>
+      <select name="tipo" style="width:100%;">
+        <option value="Activo">Activo</option>
+        <option value="Pasivo">Pasivo</option>
+        <option value="Capital">Capital</option>
+        <option value="Ingreso">Ingreso</option>
+        <option value="Gasto">Gasto</option>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary" style="white-space:nowrap;">Crear Cuenta</button>
+  </form>
+</div>
+
+<!-- LISTADO -->
+<div class="card">
+  <div class="card-title"><span class="icon">📋</span> Cuentas</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Código</th>
+        <th>Nombre</th>
+        <th>Tipo</th>
+        <th>Saldo C$</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for cod, info in cuentas %}
+      <tr>
+        <td><strong>{{ cod }}</strong></td>
+        <td>
+          <form method="POST" action="/catalogar/editar" style="display:flex;gap:6px;align-items:center;" onsubmit="return confirm('¿Guardar cambios para {{ cod }}?')">
+            <input type="hidden" name="codigo" value="{{ cod }}">
+            <input type="text" name="nombre" value="{{ info.nombre }}" required
+              style="padding:4px 8px;font-size:12px;width:180px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text);">
+            <select name="tipo" style="padding:4px 6px;font-size:11px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text);">
+              {% for t in ['Activo','Pasivo','Capital','Ingreso','Gasto'] %}
+              <option value="{{ t }}" {% if info.tipo == t %}selected{% endif %}>{{ t }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="btn btn-outline" style="padding:4px 10px;font-size:11px;text-decoration:none;">💾</button>
+          </form>
+        </td>
+        <td><span class="badge" style="font-size:10px;{% if info.tipo == 'Activo' %}background:rgba(79,140,255,0.15);color:var(--accent);{% elif info.tipo == 'Pasivo' %}background:rgba(231,76,60,0.15);color:var(--red);{% elif info.tipo == 'Capital' %}background:rgba(46,204,113,0.15);color:var(--green);{% elif info.tipo == 'Ingreso' %}background:rgba(155,89,182,0.15);color:#9b59b6;{% else %}background:rgba(243,156,18,0.15);color:#f39c12;{% endif %}">{{ info.tipo }}</td>
+        <td style="text-align:right;font-family:monospace;">C$ {{ "%.2f"|format(info.saldo|default(0)) }}</td>
+        <td>
+          <form method="POST" action="/catalogar/eliminar" onsubmit="return confirm('¿Eliminar la cuenta {{ cod }} — {{ info.nombre }}?\n\nSolo se eliminará si no tiene movimientos.')">
+            <input type="hidden" name="codigo" value="{{ cod }}">
+            <button type="submit" class="btn" style="padding:4px 10px;font-size:11px;background:rgba(231,76,60,0.12);color:var(--red);border:1px solid rgba(231,76,60,0.25);">Eliminar</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

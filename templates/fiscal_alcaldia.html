@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}F&G — Reporte Alcaldía{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div>
+    <h2>🏙️ Reporte Alcaldía</h2>
+    <div class="subtitle">Impuesto Municipal — 1% sobre Ingresos Brutos</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title"><span class="icon">📅</span> Seleccionar Período</div>
+  <form method="GET" class="form-row">
+    <div class="form-group" style="max-width:200px;">
+      <label>Desde</label>
+      <input type="date" name="desde" value="{{ desde }}" required>
+    </div>
+    <div class="form-group" style="max-width:200px;">
+      <label>Hasta</label>
+      <input type="date" name="hasta" value="{{ hasta }}" required>
+    </div>
+    <button type="submit" class="btn btn-primary" style="align-self:flex-end;">🔍 Generar</button>
+  </form>
+</div>
+
+{% if desde and hasta %}
+<div class="card">
+  <div class="card-title"><span class="icon">📊</span> Impuesto Municipal — Período {{ desde }} al {{ hasta }}</div>
+  <table>
+    <thead>
+      <tr><th style="width:60%;">Concepto</th><th style="text-align:right;">Monto C$</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Ingresos Brutos del Período</td><td style="text-align:right;" class="money money-pos">C$ {{ "{:,.2f}".format(total_ing) }}</td></tr>
+      <tr><td>Tasa Municipal</td><td style="text-align:right;">1%</td></tr>
+      <tr class="totals-row"><td><strong>Impuesto Municipal a Pagar</strong></td><td style="text-align:right;" class="money money-pos"><strong>C$ {{ "{:,.2f}".format(impuesto_alc) }}</strong></td></tr>
+    </tbody>
+  </table>
+  <div style="margin-top:12px;display:flex;gap:8px;">
+    <a href="/fiscales" class="btn btn-outline" style="text-decoration:none;">← Volver</a>
+  </div>
+  <p style="color:var(--text-dim);font-size:11px;margin-top:16px;">* Impuesto Municipal del 1% sobre ingresos brutos según Ley de Municipios de Nicaragua. Consulte a su contador para el cálculo oficial.</p>
+</div>
+{% endif %}
+{% endblock %}

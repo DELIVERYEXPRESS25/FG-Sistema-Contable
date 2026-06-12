@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}F&G — Asientos de Ajuste{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h2>📝 Asientos de Ajuste</h2>
+    <div class="subtitle">Correcciones y ajustes periódicos — Se incluyen automáticamente en el Mayor y Estados Financieros</div>
+  </div>
+</div>
+
+<!-- FORMULARIO -->
+<div class="card" style="border-color:rgba(243,156,18,0.3);">
+  <div class="card-title"><span class="icon">➕</span> Nuevo Ajuste</div>
+  <form method="POST" action="/ajustes/agregar">
+    <div class="form-row" style="margin-bottom:14px;">
+      <div class="form-group" style="max-width:180px;">
+        <label>Fecha</label>
+        <input type="date" name="fecha" required>
+      </div>
+      <div class="form-group">
+        <label>Descripción del Ajuste</label>
+        <input type="text" name="descripcion" placeholder="Ej: Ajuste de depreciación mensual" required>
+      </div>
+    </div>
+
+    <div id="ajustLines">
+      <div class="mov-line" style="display:flex;gap:10px;align-items:flex-end;margin-bottom:10px;padding:12px;background:var(--bg3);border-radius:10px;">
+        <div class="form-group" style="flex:2;">
+          <label>Cuenta</label>
+          <select name="cuenta" required>
+            <option value="">— Seleccionar cuenta —</option>
+            {% for cod, info in cuentas.items()|sort %}
+            <option value="{{ cod }}">{{ cod }} - {{ info.nombre }} ({{ info.tipo }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group" style="max-width:100px;">
+          <label>Tipo</label>
+          <select name="tipo">
+            <option value="Debe">Debe</option>
+            <option value="Haber">Haber</option>
+          </select>
+        </div>
+        <div class="form-group" style="max-width:140px;">
+          <label>Monto C$</label>
+          <input type="number" name="monto" step="0.01" min="0" placeholder="0.00" required>
+        </div>
+        <button type="button" onclick="removeAjusteLine(this)" style="background:rgba(231,76,60,0.15);border:1px solid rgba(231,76,60,0.3);border-radius:8px;color:var(--red);width:34px;height:34px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;">✕</button>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:8px;">
+      <button type="button" class="btn btn-outline" onclick="addAjusteLine()">+ Agregar línea</button>
+      <button type="submit" class="btn btn-primary" style="background:linear-gradient(135deg,var(--yellow),#e67e22);box-shadow:0 3px 12px rgba(243,156,18,0.3);">💾 Guardar Ajuste</button>
+    </div>
+  </form>
+</div>
+
+<!-- HISTORIAL -->
+<div class="card">
+  <div class="card-title"><span class="icon">📋</span> Historial de Ajustes ({{ ajustes|length }})</div>
+  {% if ajustes|length > 0 %}
+  <table>
+    <thead>
+      <tr><th>#</th><th>Fecha</th><th>Descripción</th><th>Cuenta</th><th style="text-align:right;">Debe C$</th><th style="text-align:right;">Haber C$</th></tr>
+    </thead>
+    <tbody>
+      {% for aj in ajustes|reverse %}
+        {% for mov in aj.movimientos %}
+        <tr>
+          <td>{% if loop.first %}<span class="badge badge-yellow" style="font-size:10px;">AJ-{{ aj.id }}</span>{% endif %}</td>
+          <td>{% if loop.first %}{{ aj.fecha }}{% endif %}</td>
+          <td>{% if loop.first %}<strong style="color:var(--yellow);">{{ aj.descripcion }}</strong>{% endif %}</td>
+          <td style="color:var(--text-dim);">{{ cuentas.get(mov.cuenta, {}).get('nombre', mov.cuenta) }}</td>
+          <td style="text-align:right;" class="money money-pos">{% if mov.tipo == 'Debe' %}C$ {{ "%.2f"|format(mov.monto) }}{% endif %}</td>
+          <td style="text-align:right;" class="money money-neg">{% if mov.tipo == 'Haber' %}C$ {{ "%.2f"|format(mov.monto) }}{% endif %}</td>
+        </tr>
+        {% endfor %}
+        <tr style="height:4px;"><td colspan="6" style="padding:0!important;border:none!important;"></td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color:var(--text-dim);text-align:center;padding:40px;">
+    Los ajustes se reflejan automáticamente en el <strong>Mayor</strong>, <strong>Balanza</strong> y <strong>Estados Financieros</strong>.
+  </p>
+  {% endif %}
+</div>
+
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelector('input[name="fecha"]').valueAsDate = new Date();
+
+function addAjusteLine() {
+  const container = document.getElementById('ajustLines');
+  const cuentas = `{% for cod, info in cuentas.items()|sort %}<option value="{{ cod }}">{{ cod }} - {{ info.nombre }} ({{ info.tipo }})</option>{% endfor %}`;
+  container.insertAdjacentHTML('beforeend', `
+    <div class="mov-line" style="display:flex;gap:10px;align-items:flex-end;margin-bottom:10px;padding:12px;background:var(--bg3);border-radius:10px;">
+      <div class="form-group" style="flex:2;">
+        <label>Cuenta</label>
+        <select name="cuenta" required>
+          <option value="">— Seleccionar cuenta —</option>
+          ${cuentas}
+        </select>
+      </div>
+      <div class="form-group" style="max-width:100px;">
+        <label>Tipo</label>
+        <select name="tipo">
+          <option value="Debe">Debe</option>
+          <option value="Haber">Haber</option>
+        </select>
+      </div>
+      <div class="form-group" style="max-width:140px;">
+        <label>Monto C$</label>
+        <input type="number" name="monto" step="0.01" min="0" placeholder="0.00" required>
+      </div>
+      <button type="button" onclick="removeAjusteLine(this)" style="background:rgba(231,76,60,0.15);border:1px solid rgba(231,76,60,0.3);border-radius:8px;color:var(--red);width:34px;height:34px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>
+  `);
+}
+
+function removeAjusteLine(btn) {
+  const lines = document.querySelectorAll('.mov-line');
+  if (lines.length > 1) btn.parentElement.remove();
+}
+</script>
+{% endblock %}

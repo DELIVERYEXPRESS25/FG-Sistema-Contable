@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}F&G — Auxiliar de Caja{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h2>💰 Auxiliar de Caja</h2>
+    <div class="subtitle">Flujo de efectivo y bancos — Vinculado automáticamente al Diario</div>
+  </div>
+</div>
+
+<!-- RESUMEN -->
+{% set entradas = movimientos|selectattr('tipo', 'equalto', 'Debe')|list %}
+{% set salidas = movimientos|selectattr('tipo', 'equalto', 'Haber')|list %}
+{% set total_ent = entradas|sum(attribute='monto') %}
+{% set total_sal = salidas|sum(attribute='monto') %}
+
+<div class="grid-4" style="margin-bottom:22px;">
+  <div class="stat-card">
+    <div class="accent-bar" style="background:var(--green);"></div>
+    <div class="label">Saldo Actual</div>
+    <div class="value money {% if saldo >= 0 %}money-pos{% else %}money-neg{% endif %}">C$ {{ "%.2f"|format(saldo) }}</div>
+    <div class="trend {% if saldo >= 0 %}up{% else %}down{% endif %}">{% if saldo >= 0 %}▲ Positivo{% else %}▼ Negativo{% endif %}</div>
+  </div>
+  <div class="stat-card">
+    <div class="accent-bar" style="background:var(--green);"></div>
+    <div class="label">Total Entradas</div>
+    <div class="value money money-pos">C$ {{ "%.2f"|format(total_ent) }}</div>
+    <div class="trend">{{ entradas|length }} movimientos</div>
+  </div>
+  <div class="stat-card">
+    <div class="accent-bar" style="background:var(--red);"></div>
+    <div class="label">Total Salidas</div>
+    <div class="value money money-neg">C$ {{ "%.2f"|format(total_sal) }}</div>
+    <div class="trend">{{ salidas|length }} movimientos</div>
+  </div>
+  <div class="stat-card">
+    <div class="accent-bar" style="background:var(--yellow);"></div>
+    <div class="label">Movimientos</div>
+    <div class="value">{{ movimientos|length }}</div>
+    <div class="trend">Total registrados</div>
+  </div>
+</div>
+
+<!-- GRAFICO FLUJO -->
+<div class="card">
+  <div class="card-title"><span class="icon">📈</span> Flujo de Caja</div>
+  <div class="chart-container">
+    <canvas id="cajaCChart"></canvas>
+  </div>
+</div>
+
+<!-- DETALLE -->
+<div class="card">
+  <div class="card-title"><span class="icon">📋</span> Detalle de Movimientos</div>
+  {% if movimientos|length > 0 %}
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Fecha</th>
+        <th>Descripción</th>
+        <th>Cuenta</th>
+        <th>Tipo</th>
+        <th style="text-align:right;">Monto C$</th>
+        <th style="text-align:right;">Saldo C$</th>
+        <th>Ref</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% set saldo_run = namespace(val=0) %}
+      {% for mov in movimientos %}
+        {% if mov.tipo == 'Debe' %}
+          {% set saldo_run.val = saldo_run.val + mov.monto %}
+        {% else %}
+          {% set saldo_run.val = saldo_run.val - mov.monto %}
+        {% endif %}
+      <tr>
+        <td><span class="badge badge-blue" style="font-size:10px;">{{ loop.index }}</span></td>
+        <td>{{ mov.fecha }}</td>
+        <td style="color:var(--text-bright);">{{ mov.descripcion }}</td>
+        <td>
+          {% if mov.cuenta == '1001' %}
+            <span class="badge badge-green" style="font-size:10px;">💵 Efectivo</span>
+          {% else %}
+            <span class="badge badge-blue" style="font-size:10px;">🏦 Banco</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if mov.tipo == 'Debe' %}
+            <span class="badge badge-green" style="font-size:10px;">📥 Entrada</span>
+          {% else %}
+            <span class="badge badge-red" style="font-size:10px;">📤 Salida</span>
+          {% endif %}
+        </td>
+        <td style="text-align:right;" class="money {% if mov.tipo == 'Debe' %}money-pos{% else %}money-neg{% endif %}">
+          {% if mov.tipo == 'Debe' %}+{% else %}−{% endif %}C$ {{ "%.2f"|format(mov.monto) }}
+        </td>
+        <td style="text-align:right;" class="money {% if saldo_run.val >= 0 %}money-pos{% else %}money-neg{% endif %}">
+          C$ {{ "%.2f"|format(saldo_run.val) }}
+        </td>
+        <td style="font-size:11px;color:var(--text-dim);">D-{{ mov.ref_diario }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color:var(--text-dim);text-align:center;padding:40px;">
+    Los movimientos de caja se registran automáticamente cuando usas las cuentas <strong>1001 (Efectivo)</strong> o <strong>1002 (Bancos)</strong> en el Libro Diario.
+  </p>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const movs = {{ movimientos | tojson }};
+const labels = [];
+const saldos = [];
+let saldo = 0;
+
+movs.forEach((m, i) => {
+  if (m.tipo === 'Debe') saldo += m.monto;
+  else saldo -= m.monto;
+  labels.push('#' + (i+1));
+  saldos.push(saldo);
+});
+
+if (labels.length > 0) {
+  new Chart(document.getElementById('cajaCChart'), {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Saldo de Caja',
+        data: saldos,
+        borderColor: '#4f8cff',
+        backgroundColor: 'rgba(79,140,255,0.1)',
+        borderWidth: 2.5,
+        tension: 0.3,
+        fill: true,
+        pointBackgroundColor: '#4f8cff',
+        pointRadius: 3
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#7a7f99', font: { size: 11 } } } },
+      scales: {
+        x: { ticks: { color: '#7a7f99', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: { ticks: { color: '#7a7f99', font: { size: 10 }, callback: v => 'C$' + Number(v).toLocaleString() }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+} else {
+  document.getElementById('cajaCChart').parentElement.innerHTML = '<p style="color:var(--text-dim);text-align:center;padding:40px;">Sin datos de caja aún.</p>';
+}
+</script>
+{% endblock %}

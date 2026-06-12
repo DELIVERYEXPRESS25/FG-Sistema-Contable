@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% block title %}F&G — Auxiliar Diario{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h2>📋 Auxiliar Diario</h2>
+    <div class="subtitle">Detalle de todos los movimientos contables por cuenta — con saldos</div>
+  </div>
+  <div style="background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:8px 18px;text-align:center;">
+    <div style="font-size:22px;font-weight:700;color:var(--accent);">{{ total_movs }}</div>
+    <div style="font-size:11px;color:var(--text-dim);">Movimientos</div>
+  </div>
+</div>
+
+<!-- RESUMEN -->
+{% set cuentas_unicas = movimientos|map(attribute='cuenta')|unique|list %}
+<div class="grid-4" style="margin-bottom:22px;">
+  <div class="stat-card">
+    <div class="accent-bar" style="background:var(--accent);"></div>
+    <div class="label">Asientos</div>
+    <div class="value" style="color:var(--accent);">{{ total_asientos }}</div>
+    <div class="trend">Registrados en diario</div>
+  </div>
+  <div class="stat-card">
+    <div class="accent-bar" style="background:var(--green);"></div>
+    <div class="label">Total Débito</div>
+    <div class="value money money-pos">C$ {{ "%.2f"|format(total_debe) }}</div>
+    <div class="trend">{{ cuentas_unicas|length }} cuentas</div>
+  </div>
+  <div class="stat-card">
+    <div class="accent-bar" style="background:var(--red);"></div>
+    <div class="label">Total Crédito</div>
+    <div class="value money money-neg">C$ {{ "%.2f"|format(total_haber) }}</div>
+    <div class="trend">{{ total_movs }} movimientos</div>
+  </div>
+  <div class="stat-card">
+    <div class="accent-bar" style="background:var(--yellow);"></div>
+    <div class="label">Cuentas Activas</div>
+    <div class="value" style="color:var(--yellow);">{{ cuentas_con_mov|length }}</div>
+    <div class="trend">Con movimiento en diario</div>
+  </div>
+</div>
+
+<!-- SUMARIO POR CUENTA -->
+<div class="card" style="margin-bottom:18px;">
+  <div class="card-title"><span class="icon">📊</span> Sumario por Cuenta</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Código</th>
+        <th>Cuenta</th>
+        <th>Tipo</th>
+        <th style="text-align:right;">Debe C$</th>
+        <th style="text-align:right;">Haber C$</th>
+        <th style="text-align:right;">Saldo C$</th>
+        <th>Movs</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% set ns = namespace(g_debe=0, g_haber=0) %}
+      {% for cod in cuentas_con_mov %}
+        {% set movs_cta = movimientos|selectattr('cuenta', 'equalto', cod)|list %}
+        {% set d = movs_cta|selectattr('tipo', 'equalto', 'Debe')|sum(attribute='monto') %}
+        {% set h = movs_cta|selectattr('tipo', 'equalto', 'Haber')|sum(attribute='monto') %}
+        {% set saldo_act = saldos_cuenta.get(cod, 0) %}
+        {% set ns.g_debe = ns.g_debe + d %}
+        {% set ns.g_haber = ns.g_haber + h %}
+        {% set info = cuentas.get(cod, {}) %}
+        <tr>
+          <td><span class="badge badge-blue" style="font-size:10px;">{{ cod }}</span></td>
+          <td style="color:var(--text-bright);">{{ info.get('nombre', cod) if info is mapping else info }}</td>
+          <td><span class="badge" style="font-size:10px;background:rgba(79,140,255,0.1);color:var(--accent);">{{ info.get('tipo', '') if info is mapping else '' }}</span></td>
+          <td style="text-align:right;" class="money money-pos">C$ {{ "%.2f"|format(d) }}</td>
+          <td style="text-align:right;" class="money money-neg">C$ {{ "%.2f"|format(h) }}</td>
+          <td style="text-align:right;" class="money {% if saldo_act >= 0 %}money-pos{% else %}money-neg{% endif %}">C$ {{ "%.2f"|format(saldo_act) }}</td>
+          <td><span class="badge badge-blue" style="font-size:10px;">{{ movs_cta|length }}</span></td>
+        </tr>
+      {% endfor %}
+      <tr class="totals-row">
+        <td colspan="3" style="text-align:right;font-weight:700;">TOTALES</td>
+        <td style="text-align:right;" class="money money-pos">C$ {{ "%.2f"|format(ns.g_debe) }}</td>
+        <td style="text-align:right;" class="money money-neg">C$ {{ "%.2f"|format(ns.g_haber) }}</td>
+        <td></td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- FILTROS -->
+<div class="card" style="margin-bottom:18px;">
+  <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;">
+    <div class="form-group" style="max-width:200px;">
+      <label>Cuenta</label>
+      <select id="filtroCuenta" onchange="filtrar()">
+        <option value="">Todas las cuentas</option>
+        {% for cod in cuentas_con_mov %}
+        <option value="{{ cod }}">{{ cod }} — {{ cuentas.get(cod, {}).get('nombre', cod) if cuentas.get(cod) is mapping else cuentas.get(cod, cod) }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group" style="max-width:160px;">
+      <label>Desde</label>
+      <input type="date" id="filtroDesde" onchange="filtrar()">
+    </div>
+    <div class="form-group" style="max-width:160px;">
+      <label>Hasta</label>
+      <input type="date" id="filtroHasta" onchange="filtrar()">
+    </div>
+    <div class="form-group" style="max-width:200px;">
+      <label>Tipo</label>
+      <select id="filtroTipo" onchange="filtrar()">
+        <option value="">Todos</option>
+        <option value="Debe">Debe</option>
+        <option value="Haber">Haber</option>
+      </select>
+    </div>
+    <div class="form-group" style="flex:1;min-width:180px;">
+      <label>Buscar</label>
+      <input type="text" id="filtroBuscar" oninput="filtrar()" placeholder="Descripción, referencia...">
+    </div>
+    <button class="btn btn-outline" onclick="limpiarFiltros()" style="margin-bottom:6px;">✕ Limpiar</button>
+  </div>
+</div>
+
+<!-- DETALLE -->
+<div class="card">
+  <div class="card-title"><span class="icon">📋</span> Detalle de Movimientos</div>
+  {% if movimientos %}
+  <table id="tablaMovs">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Fecha</th>
+        <th>Asiento</th>
+        <th>Descripción</th>
+        <th>Cuenta</th>
+        <th>Debe C$</th>
+        <th>Haber C$</th>
+        <th style="text-align:right;">Saldo C$</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for mov in movimientos %}
+      <tr class="mov-row" data-cuenta="{{ mov.cuenta }}" data-fecha="{{ mov.fecha }}" data-tipo="{{ mov.tipo }}" data-search="{{ (mov.descripcion ~ ' ' ~ (mov.ref or '') ~ ' ' ~ mov.cuenta ~ ' ' ~ mov.nombre_cuenta)|lower }}">
+        <td><span class="badge badge-blue" style="font-size:10px;">{{ loop.index }}</span></td>
+        <td style="white-space:nowrap;">{{ mov.fecha }}</td>
+        <td><a href="/diario/editar/{{ mov.asiento_id }}" style="color:var(--accent);text-decoration:none;font-weight:600;">#{{ mov.asiento_id }}</a></td>
+        <td style="color:var(--text-bright);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ mov.descripcion }}</td>
+        <td>
+          <span class="badge" style="font-size:10px;background:rgba(79,140,255,0.12);color:var(--accent);font-weight:700;">{{ mov.cuenta }}</span>
+          <span style="font-size:11px;color:var(--text-dim);">{{ mov.nombre_cuenta }}</span>
+        </td>
+        <td style="text-align:right;" class="money money-pos">
+          {% if mov.tipo == 'Debe' %}C$ {{ "%.2f"|format(mov.monto) }}{% endif %}
+        </td>
+        <td style="text-align:right;" class="money money-neg">
+          {% if mov.tipo == 'Haber' %}C$ {{ "%.2f"|format(mov.monto) }}{% endif %}
+        </td>
+        <td style="text-align:right;" class="money {% if mov.saldo_cuenta >= 0 %}money-pos{% else %}money-neg{% endif %}">
+          C$ {{ "%.2f"|format(mov.saldo_cuenta) }}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div id="sinResultados" style="display:none;color:var(--text-dim);text-align:center;padding:40px;">
+    No se encontraron movimientos con los filtros seleccionados.
+  </div>
+  {% else %}
+  <p style="color:var(--text-dim);text-align:center;padding:40px;">
+    No hay movimientos registrados. Los movimientos aparecen automáticamente cuando registras asientos en el <a href="/diario" style="color:var(--accent);">Libro Diario</a>.
+  </p>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function filtrar() {
+  const cuenta = document.getElementById('filtroCuenta').value;
+  const desde = document.getElementById('filtroDesde').value;
+  const hasta = document.getElementById('filtroHasta').value;
+  const tipo = document.getElementById('filtroTipo').value;
+  const buscar = document.getElementById('filtroBuscar').value.toLowerCase().trim();
+  const rows = document.querySelectorAll('.mov-row');
+  let visible = 0;
+
+  rows.forEach(row => {
+    let show = true;
+    if (cuenta && row.dataset.cuenta !== cuenta) show = false;
+    if (tipo && row.dataset.tipo !== tipo) show = false;
+    if (desde && row.dataset.fecha < desde) show = false;
+    if (hasta && row.dataset.fecha > hasta) show = false;
+    if (buscar && !row.dataset.search.includes(buscar)) show = false;
+    row.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+
+  document.getElementById('sinResultados').style.display = (visible === 0 && rows.length > 0) ? '' : 'none';
+}
+
+function limpiarFiltros() {
+  document.getElementById('filtroCuenta').value = '';
+  document.getElementById('filtroDesde').value = '';
+  document.getElementById('filtroHasta').value = '';
+  document.getElementById('filtroTipo').value = '';
+  document.getElementById('filtroBuscar').value = '';
+  filtrar();
+}
+</script>
+{% endblock %}

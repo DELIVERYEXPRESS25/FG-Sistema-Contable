@@ -1,0 +1,25 @@
+# Archivos a excluir en Docker
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.log
+.env
+.env.example
+.colectivo_fg*.db
+.colectivo_fg_dev.db
+data/
+uploads/
+venv/
+.venv/
+.git/
+.gitignore
+*.md
+.DS_Store
+node_modules/

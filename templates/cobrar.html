@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}F&G — Cuentas por Cobrar{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h2>💳 Cuentas por Cobrar</h2>
+    <div class="subtitle">Seguimiento automático de cobros pendientes desde el Diario</div>
+  </div>
+</div>
+
+<!-- RESUMEN -->
+{% set pendientes = cobrar|selectattr('estado', 'equalto', 'Pendiente')|list %}
+{% set cobrados = cobrar|selectattr('estado', 'equalto', 'Cobrado')|list %}
+{% set total_pend = pendientes|sum(attribute='monto') %}
+{% set total_cob = cobrados|sum(attribute='monto') %}
+
+<div class="grid-3" style="margin-bottom:22px;">
+  <div class="stat-card">
+    <div class="accent-bar" style="background:var(--yellow);"></div>
+    <div class="label">Pendientes</div>
+    <div class="value" style="color:var(--yellow);">{{ pendientes|length }}</div>
+    <div class="trend">Cobros por realizar</div>
+  </div>
+  <div class="stat-card">
+    <div class="accent-bar" style="background:var(--red);"></div>
+    <div class="label">Monto Pendiente</div>
+    <div class="value money money-neg">C$ {{ "%.2f"|format(total_pend) }}</div>
+    <div class="trend">Por cobrar</div>
+  </div>
+  <div class="stat-card">
+    <div class="accent-bar" style="background:var(--green);"></div>
+    <div class="label">Cobrados</div>
+    <div class="value money money-pos">C$ {{ "%.2f"|format(total_cob) }}</div>
+    <div class="trend">{{ cobrados|length }} facturas cobradas</div>
+  </div>
+</div>
+
+<form method="GET" class="form-row" style="margin-bottom:16px;">
+  <div class="form-group" style="max-width:300px;">
+    <input type="text" name="search" placeholder="Buscar por fecha, descripción o estado..." value="{{ search }}" style="background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;padding:9px 12px;color:var(--text-bright);font-size:13px;font-family:'Inter',sans-serif;outline:none;width:100%;box-sizing:border-box;">
+  </div>
+  <button type="submit" class="btn btn-outline" style="align-self:flex-end;">🔍 Buscar</button>
+  {% if search %}<a href="/cobrar" class="btn btn-outline" style="align-self:flex-end;text-decoration:none;">✕ Limpiar</a>{% endif %}
+  <div style="flex:1;text-align:right;font-size:12px;color:var(--text-dim);align-self:flex-end;">{{ total_entries }} registros</div>
+</form>
+
+<div class="card">
+  <div class="card-title"><span class="icon">📋</span> Detalle de Cuentas por Cobrar</div>
+  {% if cobrar|length > 0 %}
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Fecha</th>
+        <th>Descripción</th>
+        <th>Ref Diario</th>
+        <th style="text-align:right;">Monto C$</th>
+        <th>Estado</th>
+        <th>Fecha Cobro</th>
+        <th style="text-align:center;">Acción</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in cobrar %}
+      <tr>
+        <td><span class="badge badge-blue" style="font-size:10px;">{{ item.id }}</span></td>
+        <td>{{ item.fecha }}</td>
+        <td style="color:var(--text-bright);">{{ item.descripcion }}</td>
+        <td><span class="badge badge-blue" style="font-size:10px;">D-{{ item.ref_diario }}</span></td>
+        <td style="text-align:right;" class="money money-pos">C$ {{ "%.2f"|format(item.monto) }}</td>
+        <td>
+          <span class="badge {% if item.estado == 'Pendiente' %}badge-yellow{% else %}badge-green{% endif %}">
+            {{ item.estado }}
+          </span>
+        </td>
+        <td style="color:var(--text-dim);font-size:12px;">{{ item.get('fecha_cobro', '—') if item.estado == 'Cobrado' else '—' }}</td>
+        <td style="text-align:center;">
+          {% if item.estado == 'Pendiente' %}
+          <form method="POST" action="/cobrar/pagar/{{ indices[loop.index0] }}" style="display:inline;">
+            <button type="submit" class="btn btn-success" style="padding:6px 14px;font-size:11px;">✓ Marcar Cobrado</button>
+          </form>
+          {% else %}
+          <form method="POST" action="/cobrar/eliminar/{{ indices[loop.index0] }}" style="display:inline;" onsubmit="return confirm('¿Eliminar esta factura del historial?')">
+            <button type="submit" class="btn" style="padding:6px 12px;font-size:11px;background:rgba(231,76,60,0.12);color:var(--red);border:1px solid rgba(231,76,60,0.25);">Eliminar</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if total_pages > 1 %}
+<div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:16px;">
+  <a href="/cobrar?page=1{% if search %}&search={{ search }}{% endif %}" class="btn btn-outline" style="padding:6px 12px;font-size:11px;text-decoration:none;">««</a>
+  <a href="/cobrar?page={{ page-1 }}{% if search %}&search={{ search }}{% endif %}" class="btn btn-outline" style="padding:6px 12px;font-size:11px;text-decoration:none;{{ 'visibility:hidden' if page <= 1 }}">«</a>
+  {% set sp = [1, page-2]|max %}
+  {% set ep = [total_pages+1, page+3]|min %}
+  {% for p in range(sp, ep) %}
+  <a href="/cobrar?page={{ p }}{% if search %}&search={{ search }}{% endif %}" class="btn {{ 'btn-primary' if p == page else 'btn-outline' }}" style="padding:6px 12px;font-size:11px;text-decoration:none;">{{ p }}</a>
+  {% endfor %}
+  <a href="/cobrar?page={{ page+1 }}{% if search %}&search={{ search }}{% endif %}" class="btn btn-outline" style="padding:6px 12px;font-size:11px;text-decoration:none;{{ 'visibility:hidden' if page >= total_pages }}">»</a>
+  <a href="/cobrar?page={{ total_pages }}{% if search %}&search={{ search }}{% endif %}" class="btn btn-outline" style="padding:6px 12px;font-size:11px;text-decoration:none;">»»</a>
+  <span style="font-size:11px;color:var(--text-dim);">Pág {{ page }}/{{ total_pages }}</span>
+</div>
+{% endif %}
+  {% else %}
+  <p style="color:var(--text-dim);text-align:center;padding:40px;">
+    Las cuentas por cobrar se generan automáticamente cuando registras un movimiento en la cuenta <strong>1003 - Cuentas por Cobrar</strong> en el Libro Diario.
+  </p>
+  {% endif %}
+</div>
+{% endblock %}

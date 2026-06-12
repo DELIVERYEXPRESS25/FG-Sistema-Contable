@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+{% block title %}F&G — Balance General{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h2>🏦 Balance General</h2>
+    <div class="subtitle">Activos = Pasivos + Capital — Estado de situación financiera</div>
+  </div>
+  <div style="text-align:right;">
+    {% if (total_activo - (total_pasivo + total_capital))|abs < 0.02 %}
+      <span class="badge badge-green" style="font-size:13px;padding:6px 16px;">✓ Balanceado</span>
+    {% else %}
+      <span class="badge badge-red" style="font-size:13px;padding:6px 16px;">✕ Desbalanceado</span>
+    {% endif %}
+  </div>
+</div>
+
+<!-- KPIs -->
+<div class="grid-3" style="margin-bottom:22px;">
+  <div class="stat-card">
+    <div class="accent-bar" style="background:linear-gradient(90deg, var(--accent), var(--accent2));"></div>
+    <div class="label">Total Activos</div>
+    <div class="value money money-pos">C$ {{ "%.2f"|format(total_activo) }}</div>
+    <div class="trend">Recursos disponibles</div>
+  </div>
+  <div class="stat-card">
+    <div class="accent-bar" style="background:var(--red);"></div>
+    <div class="label">Total Pasivos</div>
+    <div class="value money money-neg">C$ {{ "%.2f"|format(total_pasivo) }}</div>
+    <div class="trend">Obligaciones</div>
+  </div>
+  <div class="stat-card">
+    <div class="accent-bar" style="background:var(--green);"></div>
+    <div class="label">Total Capital</div>
+    <div class="value money money-pos">C$ {{ "%.2f"|format(total_capital) }}</div>
+    <div class="trend">Patrimonio neto</div>
+  </div>
+</div>
+
+<!-- LAYOUT DOS COLUMNAS -->
+<div class="grid-2">
+  <!-- ACTIVOS -->
+  <div>
+    <div class="card">
+      <div class="card-title" style="color:var(--accent);"><span class="icon">📦</span> ACTIVOS</div>
+      <table>
+        <thead><tr><th>Cuenta</th><th style="text-align:right;">Saldo C$</th></tr></thead>
+        <tbody>
+          {% for item in activos %}
+          <tr>
+            <td style="color:var(--text-bright);">{{ item.nombre }}</td>
+            <td style="text-align:right;" class="money {% if item.saldo >= 0 %}money-pos{% else %}money-neg{% endif %}">C$ {{ "%.2f"|format(item.saldo) }}</td>
+          </tr>
+          {% endfor %}
+          <tr class="totals-row">
+            <td>TOTAL ACTIVOS</td>
+            <td style="text-align:right;" class="money">C$ {{ "%.2f"|format(total_activo) }}</td>
+          </tr>
+        </tbody>
+      </table>
+      {% if activos|length == 0 %}
+      <p style="color:var(--text-dim);text-align:center;padding:20px;">Sin activos registrados.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- PASIVOS + CAPITAL -->
+  <div>
+    <div class="card">
+      <div class="card-title" style="color:var(--red);"><span class="icon">💳</span> PASIVOS</div>
+      <table>
+        <thead><tr><th>Cuenta</th><th style="text-align:right;">Saldo C$</th></tr></thead>
+        <tbody>
+          {% for item in pasivos %}
+          <tr>
+            <td style="color:var(--text-bright);">{{ item.nombre }}</td>
+            <td style="text-align:right;" class="money money-neg">C$ {{ "%.2f"|format(item.saldo) }}</td>
+          </tr>
+          {% endfor %}
+          <tr class="totals-row">
+            <td>TOTAL PASIVOS</td>
+            <td style="text-align:right;" class="money">C$ {{ "%.2f"|format(total_pasivo) }}</td>
+          </tr>
+        </tbody>
+      </table>
+      {% if pasivos|length == 0 %}
+      <p style="color:var(--text-dim);text-align:center;padding:16px;">Sin pasivos.</p>
+      {% endif %}
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="color:var(--green);"><span class="icon">🏛️</span> CAPITAL (PATRIMONIO)</div>
+      <table>
+        <thead><tr><th>Cuenta</th><th style="text-align:right;">Saldo C$</th></tr></thead>
+        <tbody>
+          {% for item in capital %}
+          <tr>
+            <td style="color:var(--text-bright);">{{ item.nombre }}</td>
+            <td style="text-align:right;" class="money {% if item.saldo >= 0 %}money-pos{% else %}money-neg{% endif %}">C$ {{ "%.2f"|format(item.saldo) }}</td>
+          </tr>
+          {% endfor %}
+          <tr class="totals-row">
+            <td>TOTAL CAPITAL</td>
+            <td style="text-align:right;" class="money">C$ {{ "%.2f"|format(total_capital) }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ECUACION -->
+    <div class="card" style="background:rgba(79,140,255,0.06);border-color:rgba(79,140,255,0.25);text-align:center;padding:18px;">
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;letter-spacing:1px;text-transform:uppercase;">Verificación: Pasivos + Capital</div>
+      <div class="money" style="font-size:20px;color:var(--text-bright);">C$ {{ "%.2f"|format(total_pasivo + total_capital) }}</div>
+      <div style="font-size:11px;color:var(--text-dim);margin-top:4px;">
+        {% if (total_activo - (total_pasivo + total_capital))|abs < 0.02 %}
+          ✓ Activos = Pasivos + Capital
+        {% else %}
+          ✕ Diferencia: C$ {{ "%.2f"|format(total_activo - (total_pasivo + total_capital)) }}
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- BALANCE FORMAL -->
+<div class="card" style="border-color:rgba(79,140,255,0.25);">
+  <div style="text-align:center;padding:10px 0 6px;">
+    <div style="font-size:11px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;">Sistema Contable F & G</div>
+    <h3 style="font-family:'Playfair Display',serif;color:var(--text-bright);font-size:20px;margin-top:4px;">Balance General</h3>
+    
+  </div>
+  <hr style="border-color:var(--card-border);margin:14px 0;">
+  <div class="grid-2">
+    <div>
+      <div style="color:var(--accent);font-weight:700;font-size:13px;padding:8px 0 4px;">ACTIVOS</div>
+      {% for item in activos %}
+      <div style="display:flex;justify-content:space-between;padding:5px 0 5px 16px;font-size:13px;">
+        <span>{{ item.nombre }}</span><span class="money money-pos">C$ {{ "%.2f"|format(item.saldo) }}</span>
+      </div>
+      {% endfor %}
+      <div style="border-top:2px solid var(--card-border);margin-top:6px;padding-top:6px;display:flex;justify-content:space-between;font-weight:700;color:var(--text-bright);">
+        <span>Total Activos</span><span class="money">C$ {{ "%.2f"|format(total_activo) }}</span>
+      </div>
+    </div>
+    <div>
+      <div style="color:var(--red);font-weight:700;font-size:13px;padding:8px 0 4px;">PASIVOS</div>
+      {% for item in pasivos %}
+      <div style="display:flex;justify-content:space-between;padding:5px 0 5px 16px;font-size:13px;">
+        <span>{{ item.nombre }}</span><span class="money money-neg">C$ {{ "%.2f"|format(item.saldo) }}</span>
+      </div>
+      {% endfor %}
+      <div style="border-top:1px solid var(--card-border);margin-top:4px;padding-top:4px;display:flex;justify-content:space-between;font-weight:600;">
+        <span>Total Pasivos</span><span class="money">C$ {{ "%.2f"|format(total_pasivo) }}</span>
+      </div>
+
+      <div style="color:var(--green);font-weight:700;font-size:13px;padding:12px 0 4px;">CAPITAL</div>
+      {% for item in capital %}
+      <div style="display:flex;justify-content:space-between;padding:5px 0 5px 16px;font-size:13px;">
+        <span>{{ item.nombre }}</span><span class="money {% if item.saldo >= 0 %}money-pos{% else %}money-neg{% endif %}">C$ {{ "%.2f"|format(item.saldo) }}</span>
+      </div>
+      {% endfor %}
+      <div style="border-top:2px solid var(--card-border);margin-top:6px;padding-top:6px;display:flex;justify-content:space-between;font-weight:700;color:var(--text-bright);">
+        <span>Total Pasivos + Capital</span><span class="money">C$ {{ "%.2f"|format(total_pasivo + total_capital) }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

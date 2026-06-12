@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}F&G — Balanza de Comprobación{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h2>⚖️ Balanza de Comprobación</h2>
+    <div class="subtitle">Verificación de débitos y créditos — Incluye ajustes</div>
+  </div>
+  <div style="text-align:right;">
+    {% if total_debe == total_haber and total_saldo_debe == total_saldo_haber %}
+      <span class="badge badge-green" style="font-size:13px;padding:6px 16px;">✓ Balanceada</span>
+    {% else %}
+      <span class="badge badge-red" style="font-size:13px;padding:6px 16px;">✕ No balanceada</span>
+    {% endif %}
+  </div>
+</div>
+
+<!-- KPIs -->
+<div class="grid-4" style="margin-bottom:22px;">
+  <div class="stat-card">
+    <div class="accent-bar" style="background:var(--green);"></div>
+    <div class="label">Total Debe</div>
+    <div class="value money" style="font-size:18px;">C$ {{ "%.2f"|format(total_debe) }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="accent-bar" style="background:var(--red);"></div>
+    <div class="label">Total Haber</div>
+    <div class="value money" style="font-size:18px;">C$ {{ "%.2f"|format(total_haber) }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="accent-bar" style="background:var(--accent);"></div>
+    <div class="label">Saldo Debe</div>
+    <div class="value money" style="font-size:18px;">C$ {{ "%.2f"|format(total_saldo_debe) }}</div>
+  </div>
+  <div class="stat-card">
+    <div class="accent-bar" style="background:var(--accent2);"></div>
+    <div class="label">Saldo Haber</div>
+    <div class="value money" style="font-size:18px;">C$ {{ "%.2f"|format(total_saldo_haber) }}</div>
+  </div>
+</div>
+
+<div class="card">
+  <table>
+    <thead>
+      <tr>
+        <th>Código</th>
+        <th>Cuenta</th>
+        <th>Tipo</th>
+        <th style="text-align:right;">Debe C$</th>
+        <th style="text-align:right;">Haber C$</th>
+        <th style="text-align:right;">Saldo Debe C$</th>
+        <th style="text-align:right;">Saldo Haber C$</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in balanza %}
+        {% if row.debe != 0 or row.haber != 0 %}
+      <tr>
+        <td><span class="badge badge-blue" style="font-size:10px;">{{ row.codigo }}</span></td>
+        <td style="color:var(--text-bright);font-weight:500;">{{ row.nombre }}</td>
+        <td>
+          <span class="badge {% if row.tipo == 'Activo' %}badge-blue{% elif row.tipo == 'Pasivo' %}badge-red{% elif row.tipo == 'Capital' %}badge-green{% elif row.tipo == 'Ingreso' %}badge-green{% else %}badge-yellow{% endif %}" style="font-size:10px;">{{ row.tipo }}</span>
+        </td>
+        <td style="text-align:right;" class="money money-pos">{% if row.debe > 0 %}C$ {{ "%.2f"|format(row.debe) }}{% endif %}</td>
+        <td style="text-align:right;" class="money money-neg">{% if row.haber > 0 %}C$ {{ "%.2f"|format(row.haber) }}{% endif %}</td>
+        <td style="text-align:right;" class="money money-pos">{% if row.saldo_debe > 0 %}C$ {{ "%.2f"|format(row.saldo_debe) }}{% endif %}</td>
+        <td style="text-align:right;" class="money money-neg">{% if row.saldo_haber > 0 %}C$ {{ "%.2f"|format(row.saldo_haber) }}{% endif %}</td>
+      </tr>
+        {% endif %}
+      {% endfor %}
+
+      <!-- TOTALES -->
+      <tr class="totals-row">
+        <td colspan="3" style="font-weight:700;color:var(--text-bright);">TOTALES</td>
+        <td style="text-align:right;" class="money">C$ {{ "%.2f"|format(total_debe) }}</td>
+        <td style="text-align:right;" class="money">C$ {{ "%.2f"|format(total_haber) }}</td>
+        <td style="text-align:right;" class="money">C$ {{ "%.2f"|format(total_saldo_debe) }}</td>
+        <td style="text-align:right;" class="money">C$ {{ "%.2f"|format(total_saldo_haber) }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  {% if balanza|selectattr('debe', '>', 0)|list|length == 0 %}
+  <p style="color:var(--text-dim);text-align:center;padding:30px;">La balanza se genera automáticamente desde el Diario y los Ajustes.</p>
+  {% endif %}
+</div>
+{% endblock %}
