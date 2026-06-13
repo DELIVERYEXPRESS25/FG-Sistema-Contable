@@ -80,7 +80,7 @@
         <td>{{ mov.fecha }}</td>
         <td style="color:var(--text-bright);">{{ mov.descripcion }}</td>
         <td>
-          {% if mov.cuenta == '1001' %}
+          {% if mov.cuenta in ('1001', '1.1.01') %}
             <span class="badge badge-green" style="font-size:10px;">💵 Efectivo</span>
           {% else %}
             <span class="badge badge-blue" style="font-size:10px;">🏦 Banco</span>

@@ -15,25 +15,27 @@ def get_next_id(data, key):
 
 
 def ensure_ids(data):
+    skip_keys = {"pos_historial", "auditoria"}
     for key, lista in data.items():
-        if isinstance(lista, list) and lista:
-            seen = set()
-            next_id_for_key = 1
-            for item in lista:
-                if isinstance(item, dict):
-                    if "id" not in item:
+        if key in skip_keys or not isinstance(lista, list) or not lista:
+            continue
+        seen = set()
+        next_id_for_key = 1
+        for item in lista:
+            if isinstance(item, dict):
+                if "id" not in item:
+                    while next_id_for_key in seen:
+                        next_id_for_key += 1
+                    item["id"] = next_id_for_key
+                    seen.add(next_id_for_key)
+                    next_id_for_key += 1
+                else:
+                    if item["id"] in seen:
                         while next_id_for_key in seen:
                             next_id_for_key += 1
                         item["id"] = next_id_for_key
-                        seen.add(next_id_for_key)
                         next_id_for_key += 1
-                    else:
-                        if item["id"] in seen:
-                            while next_id_for_key in seen:
-                                next_id_for_key += 1
-                            item["id"] = next_id_for_key
-                            next_id_for_key += 1
-                        seen.add(item["id"])
+                    seen.add(item["id"])
 
 
 def get_data_dir():

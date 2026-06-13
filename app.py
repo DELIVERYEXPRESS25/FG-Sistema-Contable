@@ -66,7 +66,7 @@ def audit_log(data, accion, detalle=""):
         data["auditoria"] = []
     data["auditoria"].append({
         "fecha": datetime.now().isoformat(),
-        "usuario": session.get("user", g.get("user", "anónimo")),
+        "usuario": session.get("user", getattr(g, "user", "anónimo")),
         "accion": accion,
         "detalle": detalle,
     })
@@ -75,6 +75,7 @@ def audit_log(data, accion, detalle=""):
 
 # Almacenamiento temporal de archivos Excel entre la detección de hojas y la importación
 _archivos_temp = {}
+_MAX_ARCHIVOS_TEMP = 20
 
 
 # ══════════════════════════════════════════════════════════════
@@ -90,52 +91,53 @@ _archivos_temp = {}
 
 
 # ─── DATOS INICIALES ───────────────────────────
+CUENTAS_BASE = {
+    "1":     {"nombre": "Activo", "tipo": "Activo", "saldo": 0},
+    "1.1":   {"nombre": "Activo Circulante", "tipo": "Activo", "saldo": 0},
+    "1.1.01":{"nombre": "Caja", "tipo": "Activo", "saldo": 0},
+    "1.1.02":{"nombre": "Banco", "tipo": "Activo", "saldo": 0},
+    "1.1.03":{"nombre": "Cuentas por Cobrar", "tipo": "Activo", "saldo": 0},
+    "1.1.04":{"nombre": "Inventario", "tipo": "Activo", "saldo": 0},
+    "1.1.05":{"nombre": "Papelería y Útiles", "tipo": "Activo", "saldo": 0},
+    "1.2":   {"nombre": "Activo Fijo", "tipo": "Activo", "saldo": 0},
+    "1.2.01":{"nombre": "Terreno", "tipo": "Activo", "saldo": 0},
+    "1.2.02":{"nombre": "Edificio", "tipo": "Activo", "saldo": 0},
+    "1.2.03":{"nombre": "Mobiliario y Equipo", "tipo": "Activo", "saldo": 0},
+    "1.2.04":{"nombre": "Depreciación Acumulada", "tipo": "Activo", "saldo": 0},
+    "2":     {"nombre": "Pasivo", "tipo": "Pasivo", "saldo": 0},
+    "2.1":   {"nombre": "Pasivo Circulante", "tipo": "Pasivo", "saldo": 0},
+    "2.1.01":{"nombre": "Cuentas por Pagar", "tipo": "Pasivo", "saldo": 0},
+    "2.1.02":{"nombre": "Documentos por Pagar", "tipo": "Pasivo", "saldo": 0},
+    "2.1.03":{"nombre": "Impuestos por Pagar", "tipo": "Pasivo", "saldo": 0},
+    "2.2":   {"nombre": "Pasivo a Largo Plazo", "tipo": "Pasivo", "saldo": 0},
+    "2.2.01":{"nombre": "Préstamos Bancarios", "tipo": "Pasivo", "saldo": 0},
+    "3":     {"nombre": "Capital", "tipo": "Capital", "saldo": 0},
+    "3.1":   {"nombre": "Capital Social", "tipo": "Capital", "saldo": 0},
+    "3.2":   {"nombre": "Reserva Legal", "tipo": "Capital", "saldo": 0},
+    "3.3":   {"nombre": "Utilidades", "tipo": "Capital", "saldo": 0},
+    "3.3.01":{"nombre": "Utilidad del Ejercicio", "tipo": "Capital", "saldo": 0},
+    "3.3.02":{"nombre": "Utilidad de Ejercicios Anteriores", "tipo": "Capital", "saldo": 0},
+    "3.4":   {"nombre": "Pérdida del Ejercicio", "tipo": "Capital", "saldo": 0},
+    "4":     {"nombre": "Ingreso", "tipo": "Ingreso", "saldo": 0},
+    "4.1":   {"nombre": "Ingresos Operacionales", "tipo": "Ingreso", "saldo": 0},
+    "4.1.01":{"nombre": "Ventas", "tipo": "Ingreso", "saldo": 0},
+    "4.1.02":{"nombre": "Descuentos sobre Ventas", "tipo": "Ingreso", "saldo": 0},
+    "4.2":   {"nombre": "Otros Ingresos", "tipo": "Ingreso", "saldo": 0},
+    "5":     {"nombre": "Gasto", "tipo": "Gasto", "saldo": 0},
+    "5.1":   {"nombre": "Costo de Ventas", "tipo": "Gasto", "saldo": 0},
+    "5.2":   {"nombre": "Gastos Operacionales", "tipo": "Gasto", "saldo": 0},
+    "5.2.01":{"nombre": "Sueldos y Salarios", "tipo": "Gasto", "saldo": 0},
+    "5.2.02":{"nombre": "Servicios Básicos", "tipo": "Gasto", "saldo": 0},
+    "5.2.03":{"nombre": "Alquiler", "tipo": "Gasto", "saldo": 0},
+    "5.2.04":{"nombre": "Depreciaciones", "tipo": "Gasto", "saldo": 0},
+    "5.2.05":{"nombre": "Gastos Varios", "tipo": "Gasto", "saldo": 0},
+}
+
+FORMAS_PAGO_VALIDAS = {"Efectivo", "Banco", "Credito"}
+
 def empty_data():
     return {
-        "cuentas": {
-            "1001": {"nombre": "Efectivo", "tipo": "Activo", "saldo": 0},
-            "1002": {"nombre": "Bancos", "tipo": "Activo", "saldo": 0},
-            "1003": {"nombre": "Cuentas por Cobrar", "tipo": "Activo", "saldo": 0},
-            "1100": {"nombre": "Inventarios", "tipo": "Activo", "saldo": 0},
-            "1200": {"nombre": "Equipos", "tipo": "Activo", "saldo": 0},
-            "1300": {"nombre": "Mobiliario y Enseres", "tipo": "Activo", "saldo": 0},
-            "1400": {"nombre": "Vehículos", "tipo": "Activo", "saldo": 0},
-            "1500": {"nombre": "Edificios", "tipo": "Activo", "saldo": 0},
-            "2001": {"nombre": "Cuentas por Pagar", "tipo": "Pasivo", "saldo": 0},
-            "2002": {"nombre": "Préstamos Bancarios", "tipo": "Pasivo", "saldo": 0},
-            "2100": {"nombre": "Impuestos por Pagar", "tipo": "Pasivo", "saldo": 0},
-            "2200": {"nombre": "Sueldos por Pagar", "tipo": "Pasivo", "saldo": 0},
-            "3001": {"nombre": "Capital", "tipo": "Capital", "saldo": 0},
-            "3002": {"nombre": "Utilidades Retenidas", "tipo": "Capital", "saldo": 0},
-            "4001": {"nombre": "Ventas", "tipo": "Ingreso", "saldo": 0},
-            "4002": {"nombre": "Otros Ingresos", "tipo": "Ingreso", "saldo": 0},
-            "5001": {"nombre": "Costo de Ventas", "tipo": "Gasto", "saldo": 0},
-            "5002": {"nombre": "Gastos de Administración", "tipo": "Gasto", "saldo": 0},
-            "5003": {"nombre": "Gastos de Ventas", "tipo": "Gasto", "saldo": 0},
-            "5004": {"nombre": "Gastos por Intereses", "tipo": "Gasto", "saldo": 0},
-            "5005": {"nombre": "Gastos Varios", "tipo": "Gasto", "saldo": 0},
-            "5006": {"nombre": "Gastos de Depreciación", "tipo": "Gasto", "saldo": 0},
-            "6001": {"nombre": "Publicidad y Propaganda", "tipo": "Gasto", "saldo": 0},
-            "6002": {"nombre": "Comisiones sobre Ventas", "tipo": "Gasto", "saldo": 0},
-            "6003": {
-                "nombre": "Transporte y Distribución",
-                "tipo": "Gasto",
-                "saldo": 0,
-            },
-            "6004": {"nombre": "Empaque y Embalaje", "tipo": "Gasto", "saldo": 0},
-            "6005": {"nombre": "Promociones y Descuentos", "tipo": "Gasto", "saldo": 0},
-            "6006": {
-                "nombre": "Gastos de Ferias y Eventos",
-                "tipo": "Gasto",
-                "saldo": 0,
-            },
-            "6007": {"nombre": "Sueldos de Vendedores", "tipo": "Gasto", "saldo": 0},
-            "6008": {
-                "nombre": "Otros Gastos de Comercialización",
-                "tipo": "Gasto",
-                "saldo": 0,
-            },
-        },
+        "cuentas": dict(CUENTAS_BASE),
         "diario": [],
         "kardex": {},
         "cuentas_cobrar": [],
@@ -396,7 +398,7 @@ def index():
         saldo = (d - h) if ts == "Debe" else (h - d)
         if info["tipo"] == "Activo":
             total_activo += saldo
-        elif info["tipo"] == "Pasivo":
+        else:
             total_pasivo += saldo
     return render_template(
         "index.html",
@@ -476,7 +478,7 @@ def agregar_diario():
         data["diario"].append(entry)
         # Si es venta, agregar a cuentas cobrar si la cuenta es 1003
         for mov in movimientos:
-            if mov["cuenta"] == "1003" and mov["tipo"] == "Debe":
+            if mov["cuenta"] in ("1003", "1.1.03") and mov["tipo"] == "Debe":
                 data["cuentas_cobrar"].append(
                     {
                         "id": get_next_id(data, "cuentas_cobrar"),
@@ -488,7 +490,7 @@ def agregar_diario():
                     }
                 )
             # Caja
-            if mov["cuenta"] in ["1001", "1002"]:
+            if mov["cuenta"] in ("1001", "1002", "1.1.01", "1.1.02"):
                 data["caja_movimientos"].append(
                     {
                         "id": get_next_id(data, "caja_movimientos"),
@@ -728,11 +730,31 @@ def kardex():
 
         productos_list = list(data.get("kardex", {}).keys())
 
+        # Datos de productos para auto-completar en JS
+        productos_data_dict = {}
+        for p in productos_list:
+            prod_info = data.get("productos", {}).get(p, {})
+            if isinstance(prod_info, dict):
+                productos_data_dict[p] = {
+                    "precio_venta": prod_info.get("precio_venta", 0),
+                    "margen": prod_info.get("margen", 4),
+                }
+            else:
+                productos_data_dict[p] = {"precio_venta": 0, "margen": 4}
+            # Fallback a kardex_peps
+            peps_info = data.get("kardex_peps", {}).get(p, {})
+            if isinstance(peps_info, dict):
+                if not productos_data_dict[p]["precio_venta"]:
+                    productos_data_dict[p]["precio_venta"] = peps_info.get("precio_venta", 0)
+                if not productos_data_dict[p]["margen"]:
+                    productos_data_dict[p]["margen"] = peps_info.get("margen", 4)
+
         return render_template(
             "kardex.html",
             kardex=data.get("kardex", {}),
             productos=productos_list,
             reporte_peps=reporte_peps,
+            productos_data=productos_data_dict,
         )
 
     except Exception as e:
@@ -760,7 +782,6 @@ def kardex():
 def agregar_producto_kardex():
     data = load_data()
 
-    # Asegurar estructuras existen
     if "kardex" not in data:
         data["kardex"] = {}
     if "kardex_peps" not in data:
@@ -769,19 +790,26 @@ def agregar_producto_kardex():
         data["productos"] = {}
 
     nombre = request.form.get("nombre", "").strip()
+    precio_venta = float(request.form.get("precio_venta", 0))
+    margen = float(request.form.get("margen", 4))
 
     if nombre and nombre not in data["kardex"]:
-        # Inicializar kardex tradicional
         data["kardex"][nombre] = []
 
-        # Inicializar productos
-        data["productos"][nombre] = {"nombre": nombre, "stock": 0, "costo_promedio": 0}
+        data["productos"][nombre] = {
+            "nombre": nombre,
+            "stock": 0,
+            "costo_promedio": 0,
+            "precio_venta": precio_venta,
+            "margen": margen,
+        }
 
-        # Inicializar kardex_peps
         data["kardex_peps"][nombre] = {
             "lotes": [],
             "stock_total": 0,
             "costo_promedio": 0,
+            "precio_venta": precio_venta,
+            "margen": margen,
         }
 
     save_data(data)
@@ -794,12 +822,16 @@ def agregar_mov_kardex():
         data = load_data()
         producto = request.form.get("producto", "")
         fecha = request.form.get("fecha", date.today().isoformat())
+
+        if _periodo_cerrado(data, fecha):
+            return redirect(url_for("kardex") + "?error=periodo_cerrado")
+
         tipo = request.form.get("tipo", "entrada")
         cantidad = int(request.form.get("cantidad", 0))
         costo = float(request.form.get("costo", 0))
+        precio_venta = float(request.form.get("precio_venta", 0))
         descripcion = request.form.get("descripcion", "")
 
-        # Validaciones básicas
         if not producto:
             print("Error: Producto vacío")
             return redirect(url_for("kardex"))
@@ -808,7 +840,6 @@ def agregar_mov_kardex():
             print("Error: Cantidad debe ser mayor a 0")
             return redirect(url_for("kardex"))
 
-        # Asegurar que las estructuras existan
         if "kardex" not in data:
             data["kardex"] = {}
         if "kardex_peps" not in data:
@@ -816,22 +847,82 @@ def agregar_mov_kardex():
 
         try:
             if tipo.lower() == "entrada":
-                # Agregar entrada usando PEPS
-                print(
-                    f"Agregando entrada PEPS: {producto}, {cantidad} unidades @ C$ {costo}"
-                )
+                print(f"Agregando entrada PEPS: {producto}, {cantidad} unidades @ C$ {costo}")
                 data = kardex_peps.agregar_entrada_peps(
-                    data, producto, fecha, cantidad, costo
+                    data, producto, fecha, cantidad, costo, precio_venta
                 )
                 print("✓ Entrada agregada exitosamente")
 
             elif tipo.lower() == "salida":
-                # Procesar salida usando PEPS
                 print(f"Procesando salida PEPS: {producto}, {cantidad} unidades")
                 data, costo_total, lotes_usados = kardex_peps.procesar_salida_peps(
                     data, producto, fecha, cantidad
                 )
                 print(f"✓ Salida procesada. Costo total: C$ {costo_total}")
+
+                # Generar asiento contable automático si se indicó forma de pago
+                forma_pago = request.form.get("forma_pago", "").strip()
+                if forma_pago and forma_pago not in FORMAS_PAGO_VALIDAS:
+                    forma_pago = "Efectivo"
+                if forma_pago:
+                    cliente = request.form.get("cliente", "Cliente general").strip()
+                    pv = precio_venta if precio_venta > 0 else data.get("productos", {}).get(producto, {}).get("precio_venta", 0)
+                    total_venta = cantidad * pv
+
+                    if "diario" not in data:
+                        data["diario"] = []
+
+                    diario_id = get_next_id(data, "diario")
+                    cuenta_cobro = "1.1.01" if forma_pago == "Efectivo" else ("1.1.02" if forma_pago == "Banco" else "1.1.03")
+
+                    movs = [
+                        {"cuenta": cuenta_cobro, "tipo": "Debe", "monto": total_venta},
+                        {"cuenta": "4.1.01", "tipo": "Haber", "monto": total_venta},
+                    ]
+                    if costo_total > 0:
+                        movs.append({"cuenta": "5.1", "tipo": "Debe", "monto": costo_total})
+                        movs.append({"cuenta": "1.1.04", "tipo": "Haber", "monto": costo_total})
+
+                    ref_kardex = f"KX-{diario_id:04d}"
+                    entry = {
+                        "id": diario_id,
+                        "fecha": fecha,
+                        "descripcion": f"Venta Kardex - {producto} - {cliente} ({forma_pago})",
+                        "ref": ref_kardex,
+                        "movimientos": movs,
+                    }
+                    data["diario"].append(entry)
+
+                    if cuenta_cobro in ("1.1.01", "1.1.02"):
+                        data.setdefault("caja_movimientos", [])
+                        data["caja_movimientos"].append({
+                            "id": get_next_id(data, "caja_movimientos"),
+                            "fecha": fecha,
+                            "descripcion": f"Venta Kardex - {producto} - {cliente}",
+                            "tipo": "Debe",
+                            "monto": total_venta,
+                            "cuenta": cuenta_cobro,
+                            "ref_diario": diario_id,
+                        })
+
+                    if cuenta_cobro == "1.1.03":
+                        data.setdefault("cuentas_cobrar", [])
+                        data["cuentas_cobrar"].append({
+                            "id": get_next_id(data, "cuentas_cobrar"),
+                            "fecha": fecha,
+                            "descripcion": f"Venta Kardex - {producto} - {cliente}",
+                            "monto": total_venta,
+                            "estado": "Pendiente",
+                            "ref_diario": diario_id,
+                        })
+
+                    if producto in data.get("kardex", {}):
+                        k = data["kardex"][producto]
+                        if k:
+                            ultimo = k[-1]
+                            ultimo["precio_venta"] = pv
+                            ultimo["descripcion"] = f"Venta - {cliente} ({forma_pago})"
+                            ultimo["ref_diario"] = diario_id
 
             elif tipo.lower() == "ajuste":
                 if producto not in data["kardex"]:
@@ -849,20 +940,13 @@ def agregar_mov_kardex():
                         "tipo": "ajuste",
                         "cantidad": cantidad,
                         "costo": costo,
-                        "precio": 0,
-                        "total": 0,
+                        "precio_venta": precio_venta,
+                        "total": cantidad * costo,
                         "saldo": cantidad,
                         "descripcion": descripcion or "Ajuste de inventario",
                     }
                 )
                 data = _reconstruir_peps(data, producto)
-
-                # También actualizar PEPS si es ajuste positivo
-                if cantidad > saldo_anterior:
-                    diferencia = cantidad - saldo_anterior
-                    data = kardex_peps.agregar_entrada_peps(
-                        data, producto, fecha, diferencia, costo
-                    )
 
         except ValueError as e:
             # Errores controlados (ej: stock insuficiente)
@@ -1081,18 +1165,35 @@ def api_gastos_mes():
     return jsonify(get_gastos_por_mes(load_data()))
 
 
+@app.route("/api/stock")
+def api_stock():
+    data = load_data()
+    stock = {}
+    for prod, info in data.get("kardex_peps", {}).items():
+        stock[prod] = {
+            "stock": info.get("stock_total", 0),
+            "costo": info.get("costo_promedio", 0),
+            "precio_venta": info.get("precio_venta", 0),
+        }
+    for prod, info in data.get("productos", {}).items():
+        if prod not in stock:
+            stock[prod] = {
+                "stock": info.get("stock", 0),
+                "costo": info.get("costo_promedio", 0),
+                "precio_venta": info.get("precio_venta", 0),
+            }
+    return jsonify(stock)
+
+
 # ── VENTAS POS ──
 @app.route("/pos")
 def pos():
     data = load_data()
     productos = []
 
-    # Obtener productos del kardex
     for nombre, k in data.get("kardex", {}).items():
         try:
-            # Manejar kardex como lista o diccionario
             if isinstance(k, list):
-                # Kardex como lista de movimientos
                 saldo = 0
                 costo = 0
                 if k:
@@ -1100,16 +1201,40 @@ def pos():
                     saldo = ultimo_mov.get("saldo", 0)
                     costo = ultimo_mov.get("costo", 0)
 
-                productos.append({"nombre": nombre, "saldo": saldo, "costo": costo})
+                # Obtener precio_venta y margen desde productos o kardex_peps
+                pv = 0
+                mg = 4
+                prod_info = data.get("productos", {}).get(nombre, {})
+                if isinstance(prod_info, dict):
+                    pv = prod_info.get("precio_venta", 0) or 0
+                    mg = prod_info.get("margen", 4) or 4
+                if not pv:
+                    peps_info = data.get("kardex_peps", {}).get(nombre, {})
+                    pv = peps_info.get("precio_venta", 0) or 0
+                    mg = peps_info.get("margen", 4) or 4
+                if not pv:
+                    pv = costo * (1 + mg / 100)
+
+                productos.append({
+                    "nombre": nombre, "saldo": saldo,
+                    "costo": costo, "precio_venta": pv, "margen": mg,
+                })
             elif isinstance(k, dict):
-                # Kardex como diccionario (formato antiguo)
-                productos.append(
-                    {
-                        "nombre": nombre,
-                        "saldo": k.get("saldo_actual", k.get("saldo_inicial", 0)),
-                        "costo": k.get("costo_unitario", 0),
-                    }
-                )
+                pv = 0
+                prod_info = data.get("productos", {}).get(nombre, {})
+                if isinstance(prod_info, dict):
+                    pv = prod_info.get("precio_venta", 0) or 0
+                if not pv:
+                    peps_info = data.get("kardex_peps", {}).get(nombre, {})
+                    pv = peps_info.get("precio_venta", 0) or 0
+
+                productos.append({
+                    "nombre": nombre,
+                    "saldo": k.get("saldo_actual", k.get("saldo_inicial", 0)),
+                    "costo": k.get("costo_unitario", 0),
+                    "precio_venta": pv,
+                    "margen": 4,
+                })
         except Exception as e:
             print(f"Error procesando producto {nombre}: {e}")
             continue
@@ -1125,8 +1250,14 @@ def pos_venta():
     try:
         data = load_data()
         fecha = request.form.get("fecha", date.today().isoformat())
+
+        if _periodo_cerrado(data, fecha):
+            return redirect(url_for("pos") + "?error=periodo_cerrado")
+
         cliente = request.form.get("cliente", "Cliente general")
         forma_pago = request.form.get("forma_pago", "Efectivo")
+        if forma_pago not in FORMAS_PAGO_VALIDAS:
+            forma_pago = "Efectivo"
         productos_nombres = request.form.getlist("producto")
         cantidades = request.form.getlist("cantidad")
         precios = request.form.getlist("precio")
@@ -1137,7 +1268,7 @@ def pos_venta():
 
         for i in range(len(productos_nombres)):
             nombre = productos_nombres[i]
-            cantidad = float(cantidades[i]) if cantidades[i] else 0
+            cantidad = round(float(cantidades[i])) if cantidades[i] else 0
             precio = float(precios[i]) if precios[i] else 0
 
             if nombre and cantidad > 0 and precio > 0:
@@ -1151,9 +1282,16 @@ def pos_venta():
                 if peps_disponible >= cantidad:
                     try:
                         data, costo_total, _ = kardex_peps.procesar_salida_peps(
-                            data, nombre, fecha, int(cantidad))
+                            data, nombre, fecha, cantidad)
                         costo_u = costo_total / cantidad if cantidad else 0
-                    except Exception:
+                        # Parchear precio_venta en el último kardex generado por PEPS
+                        if nombre in data.get("kardex", {}):
+                            kx = data["kardex"][nombre]
+                            if kx:
+                                kx[-1]["precio_venta"] = precio
+                    except Exception as e:
+                        import traceback
+                        traceback.print_exc()
                         costo_total = 0
                         costo_u = 0
                 else:
@@ -1166,6 +1304,7 @@ def pos_venta():
                             k.append({
                                 "fecha": fecha, "tipo": "salida",
                                 "cantidad": cantidad, "costo": costo_u,
+                                "precio_venta": precio,
                                 "total": cantidad * costo_u,
                                 "saldo": nuevo_saldo,
                                 "descripcion": f"Venta POS - {cliente}",
@@ -1177,6 +1316,7 @@ def pos_venta():
                                 "fecha": fecha, "tipo": "Salida",
                                 "cantidad": cantidad,
                                 "costo_unitario": costo_u,
+                                "precio_venta": precio,
                                 "descripcion": f"Venta POS - {cliente}",
                             })
                             saldo = k.get("saldo_inicial", 0)
@@ -1211,22 +1351,22 @@ def pos_venta():
 
         diario_id = get_next_id(data, "diario")
         cuenta_cobro = (
-            "1001"
+            "1.1.01"
             if forma_pago == "Efectivo"
-            else ("1002" if forma_pago == "Banco" else "1003")
+            else ("1.1.02" if forma_pago == "Banco" else "1.1.03")
         )
 
         movimientos_diario = [
             {"cuenta": cuenta_cobro, "tipo": "Debe", "monto": total_venta},
-            {"cuenta": "4001", "tipo": "Haber", "monto": total_venta},
+            {"cuenta": "4.1.01", "tipo": "Haber", "monto": total_venta},
         ]
 
         if total_costo > 0:
             movimientos_diario.append(
-                {"cuenta": "5001", "tipo": "Debe", "monto": total_costo}
+                {"cuenta": "5.1", "tipo": "Debe", "monto": total_costo}
             )
             movimientos_diario.append(
-                {"cuenta": "1004", "tipo": "Haber", "monto": total_costo}
+                {"cuenta": "1.1.04", "tipo": "Haber", "monto": total_costo}
             )
 
         ref_pos = f"POS-{len(data.get('pos_historial', [])) + 1:04d}"
@@ -1241,7 +1381,7 @@ def pos_venta():
         data["diario"].append(entry)
 
         # Auxiliar de caja
-        if cuenta_cobro in ["1001", "1002"]:
+        if cuenta_cobro in ("1.1.01", "1.1.02"):
             data.setdefault("caja_movimientos", [])
             data["caja_movimientos"].append(
                 {
@@ -1256,7 +1396,7 @@ def pos_venta():
             )
 
         # Cuentas por cobrar
-        if cuenta_cobro == "1003":
+        if cuenta_cobro == "1.1.03":
             if "cuentas_cobrar" not in data:
                 data["cuentas_cobrar"] = []
 
@@ -1298,6 +1438,21 @@ def pos_venta():
 
         traceback.print_exc()
         return redirect(url_for("pos"))
+
+
+@app.route("/pos/historial/eliminar/<int:venta_id>", methods=["POST"])
+def pos_historial_eliminar(venta_id):
+    data = load_data()
+    historial = data.get("pos_historial", [])
+    for i, v in enumerate(historial):
+        if v.get("id") == venta_id:
+            ref = v.get("ref", "?")
+            del historial[i]
+            data["pos_historial"] = historial
+            data = audit_log(data, "pos_eliminar", f"Venta {ref} eliminada del historial")
+            save_data(data)
+            break
+    return redirect(url_for("pos"))
 
 
 # ══════════════════════════════════════════════════════════════
@@ -1549,6 +1704,9 @@ def detectar_hojas():
 
         token = str(int(time.time() * 1000))
         # Guardar en un dict global temporal (simple, sin Redis)
+        # Limitar tamaño para evitar fuga de memoria
+        if len(_archivos_temp) >= _MAX_ARCHIVOS_TEMP:
+            _archivos_temp.clear()
         _archivos_temp[token] = {
             "contenido": contenido,
             "filename": archivo.filename,
@@ -1791,8 +1949,8 @@ def _importar_filas_inventario(data, filas, col_producto, col_cantidad, col_cost
         fecha = _parsear_fecha(_val_fila(fila, col_fecha) or "", hoy)
         if producto not in data["kardex"]:
             data["kardex"][producto] = []
-            data["productos"][producto] = {"nombre": producto, "stock": 0, "costo_promedio": 0}
-            data["kardex_peps"][producto] = {"lotes": [], "stock_total": 0, "costo_promedio": 0}
+            data["productos"][producto] = {"nombre": producto, "stock": 0, "costo_promedio": 0, "precio_venta": 0, "margen": 0}
+            data["kardex_peps"][producto] = {"lotes": [], "stock_total": 0, "costo_promedio": 0, "precio_venta": 0, "margen": 0}
         if cantidad > 0:
             data = kardex_peps.agregar_entrada_peps(data, producto, fecha, cantidad, costo)
         importados += 1
@@ -1907,8 +2065,10 @@ def editar_movimiento_kardex():
                 float(request.form.get("cantidad", mov.get("cantidad", 0)))
             )
             nuevo_costo = float(request.form.get("costo", mov.get("costo", 0)))
+            nuevo_pv = float(request.form.get("precio_venta", mov.get("precio_venta", 0)))
             mov["cantidad"] = nueva_cant
             mov["costo"] = nuevo_costo
+            mov["precio_venta"] = nuevo_pv
             mov["total"] = nueva_cant * nuevo_costo
         except (ValueError, TypeError):
             pass
@@ -1944,25 +2104,36 @@ def _reconstruir_peps(data, producto):
     try:
         movs = data["kardex"].get(producto, [])
         
-        # Inicializar/limpiar kardex_peps
+        # Preservar precio_venta y margen del producto
+        old_peps = data.get("kardex_peps", {}).get(producto, {})
+        old_prod = data.get("productos", {}).get(producto, {})
+        if isinstance(old_prod, dict):
+            pv = old_peps.get("precio_venta", 0) or old_prod.get("precio_venta", 0)
+            mg = old_peps.get("margen", 4) or old_prod.get("margen", 4)
+        else:
+            pv = old_peps.get("precio_venta", 0)
+            mg = old_peps.get("margen", 4)
+
         if "kardex_peps" not in data:
             data["kardex_peps"] = {}
         data["kardex_peps"][producto] = {
             "lotes": [],
             "stock_total": 0,
             "costo_promedio": 0,
+            "precio_venta": pv,
+            "margen": mg,
         }
         
         # Procesar cada movimiento en orden cronológico
         for m in movs:
             if m.get("tipo") == "entrada" and m.get("cantidad", 0) > 0:
-                # Agregar entrada
                 data = kardex_peps.agregar_entrada_peps(
                     data,
                     producto,
                     m.get("fecha", ""),
                     m.get("cantidad", 0),
                     m.get("costo", 0),
+                    m.get("precio_venta", 0),
                 )
             elif m.get("tipo") == "salida" and m.get("cantidad", 0) > 0:
                 # Procesar salida PEPS
@@ -1971,17 +2142,23 @@ def _reconstruir_peps(data, producto):
                         data, producto, m.get("fecha", ""), m.get("cantidad", 0)
                     )
                 except Exception as e:
-                    # Si hay error (stock insuficiente), continuar
-                    pass
+                    import traceback
+                    traceback.print_exc()
             elif m.get("tipo") == "ajuste" and m.get("cantidad", 0) > 0:
-                # Para ajustes, agregar como entrada
-                data = kardex_peps.agregar_entrada_peps(
-                    data,
-                    producto,
-                    m.get("fecha", ""),
-                    m.get("cantidad", 0),
-                    m.get("costo", 0),
-                )
+                stock_actual = data["kardex_peps"][producto]["stock_total"]
+                delta = m["cantidad"] - stock_actual
+                if delta > 0:
+                    data = kardex_peps.agregar_entrada_peps(
+                        data, producto, m.get("fecha", ""), delta,
+                        m.get("costo", 0), m.get("precio_venta", 0),
+                    )
+                elif delta < 0:
+                    try:
+                        data, _, _ = kardex_peps.procesar_salida_peps(
+                            data, producto, m.get("fecha", ""), abs(delta),
+                        )
+                    except Exception:
+                        pass
     except Exception as e:
         # En caso de error, asegurar que kardex_peps existe
         if "kardex_peps" not in data:
@@ -2246,11 +2423,6 @@ def catalogar_eliminar():
                     tiene_mov = True
                     break
     if not tiene_mov:
-        for entry in data.get("pos_historial", []):
-            if entry.get("cuenta") == codigo:
-                tiene_mov = True
-                break
-    if not tiene_mov:
         for prod, regs in data.get("kardex", {}).items():
             for reg in regs:
                 if reg.get("cuenta") == codigo:
@@ -2304,11 +2476,6 @@ def eliminar_cuenta():
                     tiene_mov = True
                     break
     if not tiene_mov:
-        for entry in data.get("pos_historial", []):
-            if entry.get("cuenta") == codigo:
-                tiene_mov = True
-                break
-    if not tiene_mov:
         for prod, regs in data.get("kardex", {}).items():
             for reg in regs:
                 if reg.get("cuenta") == codigo:
@@ -2320,6 +2487,45 @@ def eliminar_cuenta():
     del data["cuentas"][codigo]
     save_data(data)
     return redirect(request.referrer or url_for("index"))
+
+
+@app.route("/catalogar/resetear", methods=["POST"])
+def catalogar_resetear():
+    """Reemplaza todo el catálogo con las cuentas base y migra datos existentes."""
+    data = load_data()
+
+    OLD_TO_NEW = {
+        "1001": "1.1.01", "1002": "1.1.02", "1003": "1.1.03",
+        "1004": "1.1.04", "2001": "2.1.01", "2002": "2.1.01",
+        "3001": "3.1", "3002": "3.3.02",
+        "4001": "4.1.01", "4002": "4.2",
+        "5001": "5.1", "5002": "5.2", "5003": "5.2.05",
+        "6001": "5.2.05",
+    }
+
+    def migrar_cuenta(cod):
+        return OLD_TO_NEW.get(cod, cod)
+
+    for entry in data.get("diario", []):
+        for mov in entry.get("movimientos", []):
+            mov["cuenta"] = migrar_cuenta(mov["cuenta"])
+
+    for mov in data.get("caja_movimientos", []):
+        mov["cuenta"] = migrar_cuenta(mov["cuenta"])
+
+    for aj in data.get("ajustes", []):
+        for mov in aj.get("movimientos", []):
+            mov["cuenta"] = migrar_cuenta(mov["cuenta"])
+
+    for prod_key in list(data.get("kardex_peps", {})):
+        peps = data["kardex_peps"][prod_key]
+        for lote in peps.get("lotes", []):
+            lote["cuenta"] = migrar_cuenta(lote.get("cuenta", ""))
+
+    data["cuentas"] = dict(CUENTAS_BASE)
+    data = audit_log(data, "resetear_catalogo", "Catálogo restaurado a cuentas por defecto con migración")
+    save_data(data)
+    return redirect(url_for("catalogar") + "?ok=cuenta_guardada")
 
 
 # ── REPORTES ──
@@ -2802,7 +3008,6 @@ def exportar_reporte():
     # ══════════════ HOJA 7: KARDEX PEPS ══════════════
     import kardex_peps
     if tipo_reporte in ["todos", "kardex"] and "kardex" in data and data["kardex"]:
-        import kardex_peps
         ws = wb.create_sheet("Kardex PEPS")
         ws.sheet_properties.tabColor = "9B59B6"
         start = add_title(ws, "Kardex PEPS", "Inventario por producto - Método PEPS")
@@ -3281,11 +3486,11 @@ def comercializacion():
 
     detalle, total = calcular_total_comercializacion(data)
 
-    # Cuentas 6xxx disponibles (las del catálogo)
+    # Cuentas de gastos operacionales disponibles
     cuentas_6 = {
         cod: info
         for cod, info in data["cuentas"].items()
-        if cod.startswith("6") and info.get("tipo") == "Gasto"
+        if cod.startswith(("5.2", "6")) and info.get("tipo") == "Gasto"
     }
     # Todas las cuentas para el formulario de asiento rápido
     todas_cuentas = data["cuentas"]
@@ -3334,7 +3539,7 @@ def comercializacion_registrar():
     data["diario"].append(entry)
 
     # Reflejo en caja si la cuenta pago es efectivo o banco
-    if cuenta_pago in ["1001", "1002"]:
+    if cuenta_pago in ("1001", "1002", "1.1.01", "1.1.02"):
         data["caja_movimientos"].append(
             {
                 "id": get_next_id(data, "caja_movimientos"),

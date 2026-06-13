@@ -61,6 +61,18 @@
   </form>
 </div>
 
+<!-- RESETEAR CATÁLOGO -->
+<div class="card" style="border-color:rgba(231,76,60,0.25);margin-bottom:18px;">
+  <div class="card-title"><span class="icon">🔄</span> Restaurar Catálogo</div>
+  <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">
+    Esto reemplazará todas las cuentas actuales con las cuentas por defecto del sistema.
+    Las cuentas existentes se perderán.
+  </p>
+  <form method="POST" action="/catalogar/resetear" onsubmit="return confirm('¿Estás seguro? Se reemplazarán TODAS las cuentas del catálogo con las cuentas por defecto.')">
+    <button type="submit" class="btn" style="background:rgba(231,76,60,0.12);color:var(--red);border:1px solid rgba(231,76,60,0.25);">🔄 Restaurar Cuentas por Defecto</button>
+  </form>
+</div>
+
 <!-- LISTADO -->
 <div class="card">
   <div class="card-title"><span class="icon">📋</span> Cuentas</div>

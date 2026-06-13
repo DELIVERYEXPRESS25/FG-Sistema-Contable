@@ -44,7 +44,7 @@ class LotePEPS:
 #  FUNCIONES PEPS
 # ════════════════════════════════════════════════════════════════════════════
 
-def agregar_entrada_peps(data, producto_codigo, fecha, cantidad, costo_unitario):
+def agregar_entrada_peps(data, producto_codigo, fecha, cantidad, costo_unitario, precio_venta=0):
     """
     Agrega una entrada al inventario PEPS.
     
@@ -66,8 +66,12 @@ def agregar_entrada_peps(data, producto_codigo, fecha, cantidad, costo_unitario)
         data['kardex_peps'][producto_codigo] = {
             'lotes': [],
             'stock_total': 0,
-            'costo_promedio': 0
+            'costo_promedio': 0,
+            'precio_venta': precio_venta,
+            'margen': 4,
         }
+    elif precio_venta > 0:
+        data['kardex_peps'][producto_codigo]['precio_venta'] = precio_venta
     
     # Agregar nuevo lote
     lote = LotePEPS(fecha, cantidad, costo_unitario)
@@ -92,7 +96,7 @@ def agregar_entrada_peps(data, producto_codigo, fecha, cantidad, costo_unitario)
         'tipo': 'entrada',
         'cantidad': cantidad,
         'costo': costo_unitario,
-        'precio': 0,
+        'precio_venta': precio_venta,
         'total': cantidad * costo_unitario,
         'saldo': saldo,
         'descripcion': f'Entrada - Lote {len(data["kardex_peps"][producto_codigo]["lotes"])}'
@@ -166,12 +170,18 @@ def procesar_salida_peps(data, producto_codigo, fecha, cantidad_solicitada):
         'tipo': 'salida',
         'cantidad': cantidad_solicitada,
         'costo': costo_unitario_promedio,
-        'precio': 0,
+        'precio_venta': 0,
         'total': costo_total,
         'saldo': saldo,
         'descripcion': f'Salida PEPS - {len(lotes_usados)} lote(s) usado(s)',
         'lotes_usados': lotes_usados
     })
+    
+    # Limpiar lotes vacíos
+    producto_peps['lotes'] = [
+        l for l in producto_peps['lotes']
+        if l.get('cantidad_restante', 0) > 0
+    ]
     
     return data, costo_total, lotes_usados
 
@@ -300,11 +310,19 @@ def generar_reporte_kardex_peps(data, producto_codigo=None):
                 elif isinstance(producto_info, str):
                     nombre = producto_info
             
+            peps_prod = data.get('kardex_peps', {}).get(codigo, {})
+            productos_info = data.get('productos', {}).get(codigo, {})
+            if isinstance(productos_info, dict):
+                pv = productos_info.get('precio_venta', 0) or peps_prod.get('precio_venta', 0)
+            else:
+                pv = peps_prod.get('precio_venta', 0)
+
             reporte[codigo] = {
                 'nombre': nombre,
                 'stock': info['stock_total'],
                 'costo_promedio': info['costo_promedio'],
                 'valor_inventario': info['valor_inventario'],
+                'precio_venta': pv,
                 'lotes': info['lotes_disponibles'],
                 'movimientos': data.get('kardex', {}).get(codigo, [])
             }

@@ -156,30 +156,57 @@
 
 <!-- ═══ FORMULARIOS COMPACTOS ═══ -->
 <div style="display:flex;gap:12px;margin-bottom:22px;flex-wrap:wrap;">
-  <div class="card" style="flex:1;min-width:260px;border-color:rgba(79,140,255,0.25);">
+  <div class="card" style="flex:1;min-width:280px;border-color:rgba(79,140,255,0.25);">
     <div class="card-title" style="font-size:13px;"><span class="icon">➕</span> Nuevo Producto</div>
-    <form method="POST" action="/kardex/agregar_producto" style="display:flex;gap:8px;">
-      <input type="text" name="nombre" placeholder="Nombre del producto" required style="flex:1;padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;">
-      <button type="submit" class="btn btn-primary btn-sm">Crear</button>
+    <form method="POST" action="/kardex/agregar_producto" style="display:flex;flex-direction:column;gap:8px;">
+      <input type="text" name="nombre" placeholder="Nombre del producto" required style="padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;">
+      <div style="display:flex;gap:8px;">
+        <input type="number" name="precio_venta" id="pv-producto" step="0.01" min="0" placeholder="Precio venta C$" style="flex:1;padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;">
+        <input type="number" name="margen" id="margen-producto" step="0.1" min="0" placeholder="Margen %" value="4" style="width:80px;padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;">
+      </div>
+      <div style="font-size:10px;color:var(--text-dim);display:flex;gap:8px;align-items:center;">
+        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
+          <input type="checkbox" id="auto-pv" checked> Auto C$ <span id="pv-preview">0.00</span>
+        </label>
+        <span>pv = costo × (1 + margen/100)</span>
+      </div>
+      <button type="submit" class="btn btn-primary btn-sm">Crear Producto</button>
     </form>
   </div>
   {% if productos %}
-  <div class="card" id="form-movimiento" style="flex:2;min-width:360px;border-color:rgba(124,92,252,0.25);">
+  <div class="card" id="form-movimiento" style="flex:2;min-width:420px;border-color:rgba(124,92,252,0.25);">
     <div class="card-title" style="font-size:13px;"><span class="icon">📝</span> Registrar Movimiento</div>
-    <form method="POST" action="/kardex/movimiento" style="display:flex;gap:8px;flex-wrap:wrap;">
-      <select name="producto" required style="flex:1;min-width:120px;padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;">
-        <option value="">Producto</option>
-        {% for p in productos %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
-      </select>
-      <select name="tipo" required style="padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;">
-        <option value="entrada">📥 Entrada</option>
-        <option value="salida">📤 Salida</option>
-        <option value="ajuste">🔄 Ajuste</option>
-      </select>
-      <input type="date" name="fecha" required style="padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;">
-      <input type="number" name="cantidad" placeholder="Cant." min="1" required style="width:80px;padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;">
-      <input type="number" name="costo" step="0.01" min="0" placeholder="Costo C$" style="width:100px;padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;">
-      <button type="submit" class="btn btn-primary btn-sm">Registrar</button>
+    <form method="POST" action="/kardex/movimiento" id="form-mov">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+        <select name="producto" required style="flex:1;min-width:120px;padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;">
+          <option value="">Producto</option>
+          {% for p in productos %}<option value="{{ p }}">{{ p }}</option>{% endfor %}
+        </select>
+        <select name="tipo" id="mov-tipo" required style="padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;">
+          <option value="entrada">📥 Entrada</option>
+          <option value="salida">📤 Salida</option>
+          <option value="ajuste">🔄 Ajuste</option>
+        </select>
+        <input type="date" name="fecha" required style="padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;flex:1;min-width:100px;">
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+        <input type="number" name="cantidad" placeholder="Cant." min="1" required style="width:80px;padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;">
+        <input type="number" name="costo" id="mov-costo" step="0.01" min="0" placeholder="Costo C$" style="width:100px;padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;">
+        <input type="number" name="precio_venta" id="mov-pv" step="0.01" min="0" placeholder="Venta C$" style="width:100px;padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;">
+      </div>
+      <div id="mov-campos-venta" style="display:none;gap:8px;flex-wrap:wrap;border-top:1px solid var(--card-border);padding-top:8px;margin-top:2px;">
+        <select name="forma_pago" style="flex:1;min-width:100px;padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;">
+          <option value="">— Solo descargar kardex —</option>
+          <option value="Efectivo">💵 Efectivo</option>
+          <option value="Banco">🏦 Banco</option>
+          <option value="Credito">📋 Crédito</option>
+        </select>
+        <input type="text" name="cliente" placeholder="Cliente" style="flex:1;min-width:100px;padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;">
+        <button type="submit" class="btn btn-primary btn-sm">Registrar</button>
+      </div>
+      <div id="mov-campos-normal" style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button type="submit" class="btn btn-primary btn-sm">Registrar</button>
+      </div>
     </form>
   </div>
   {% endif %}
@@ -208,9 +235,13 @@
       <span class="badge {% if info_peps.stock > 10 %}badge-green{% elif info_peps.stock > 0 %}badge-yellow{% else %}badge-red{% endif %}">{{ info_peps.stock }} unid.</span>
       {% endif %}
     </div>
-    <div style="display:flex;gap:6px;">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;">
       {% if info_peps %}
       <span style="font-size:11px;color:var(--text-dim);">Costo prom. <strong>C$ {{ "%.2f"|format(info_peps.costo_promedio) }}</strong></span>
+      {% if info_peps.get('precio_venta') and info_peps.precio_venta > 0 %}
+      <span style="font-size:11px;color:var(--accent);">Venta <strong>C$ {{ "%.2f"|format(info_peps.precio_venta) }}</strong></span>
+      <span style="font-size:11px;color:var(--green);">Utilidad <strong>C$ {{ "%.2f"|format(info_peps.precio_venta - info_peps.costo_promedio) }}</strong></span>
+      {% endif %}
       <span style="font-size:11px;color:var(--green);">Valor <strong>C$ {{ "%.2f"|format(info_peps.valor_inventario) }}</strong></span>
       {% endif %}
       <button onclick="abrirRenombrar('{{ producto }}')" class="btn btn-outline btn-sm" title="Renombrar">✏️</button>
@@ -242,7 +273,7 @@
       <thead><tr>
         <th>Fecha</th><th>Tipo</th><th>Descripción</th>
         <th style="text-align:right;">Cant.</th><th style="text-align:right;">Costo/u</th>
-        <th style="text-align:right;">Total</th><th style="text-align:right;">Saldo</th>
+        <th style="text-align:right;">Venta/u</th><th style="text-align:right;">Total</th><th style="text-align:right;">Saldo</th>
         <th style="text-align:center;">Acciones</th>
       </tr></thead>
       <tbody>
@@ -254,10 +285,16 @@
           <td style="color:var(--text-dim);font-size:11px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ mov.descripcion or '—' }}</td>
           <td style="text-align:right;">{{ mov.cantidad }}</td>
           <td style="text-align:right;">C$ {{ "%.2f"|format(mov.get('costo',0)) }}</td>
-          <td style="text-align:right;">C$ {{ "%.2f"|format(mov.get('total',0)) }}</td>
+          <td style="text-align:right;">{% if mov.get('precio_venta') and mov.precio_venta > 0 %}C$ {{ "%.2f"|format(mov.precio_venta) }}{% else %}—{% endif %}</td>
+          <td style="text-align:right;">
+            C$ {{ "%.2f"|format(mov.get('total',0)) }}
+            {% if mov.get('precio_venta') and mov.precio_venta > 0 and mov.tipo == 'salida' %}
+            <br><span style="font-size:9px;color:var(--green);">+C$ {{ "%.2f"|format(mov.precio_venta * mov.cantidad - mov.total) }}</span>
+            {% endif %}
+          </td>
           <td style="text-align:right;font-weight:700;">{{ mov.saldo }}</td>
           <td style="text-align:center;white-space:nowrap;">
-            <button onclick="abrirEditar('{{ producto }}', {{ real_idx }}, '{{ mov.fecha }}', '{{ mov.descripcion or '' }}', {{ mov.cantidad }}, {{ mov.get('costo',0) }})" class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 6px;">✏️</button>
+            <button onclick="abrirEditar('{{ producto }}', {{ real_idx }}, '{{ mov.fecha }}', '{{ mov.descripcion or '' }}', {{ mov.cantidad }}, {{ mov.get('costo',0) }}, {{ mov.get('precio_venta',0) }})" class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 6px;">✏️</button>
             <form method="POST" action="/kardex/eliminar_movimiento" style="display:inline;" onsubmit="return confirm('¿Eliminar este movimiento?')">
               <input type="hidden" name="producto" value="{{ producto }}">
               <input type="hidden" name="idx" value="{{ real_idx }}">
@@ -300,6 +337,7 @@
         <div class="form-group"><label>Fecha</label><input type="date" name="fecha" id="edit-fecha"></div>
         <div class="form-group"><label>Cantidad</label><input type="number" name="cantidad" id="edit-cantidad" min="1"></div>
         <div class="form-group" style="grid-column:1/-1;"><label>Costo unitario C$</label><input type="number" name="costo" id="edit-costo" step="0.01" min="0"></div>
+        <div class="form-group" style="grid-column:1/-1;"><label>Precio venta C$</label><input type="number" name="precio_venta" id="edit-precio-venta" step="0.01" min="0"></div>
       </div>
       <div style="display:flex;gap:10px;justify-content:flex-end;">
         <button type="button" onclick="document.getElementById('modal-editar-mov').classList.remove('abierto')" class="btn btn-outline">Cancelar</button>
@@ -468,13 +506,14 @@ document.getElementById('btn-importar-submit')?.addEventListener('click', functi
 });
 
 // ── Modales editar/renombrar ──
-function abrirEditar(producto, idx, fecha, desc, cantidad, costo) {
+function abrirEditar(producto, idx, fecha, desc, cantidad, costo, precio_venta) {
   document.getElementById('edit-producto').value = producto;
   document.getElementById('edit-idx').value = idx;
   document.getElementById('edit-fecha').value = fecha;
   document.getElementById('edit-desc').value = desc;
   document.getElementById('edit-cantidad').value = cantidad;
   document.getElementById('edit-costo').value = costo;
+  document.getElementById('edit-precio-venta').value = precio_venta;
   document.getElementById('modal-editar-mov').classList.add('abierto');
 }
 function abrirRenombrar(nombre) {
@@ -490,5 +529,68 @@ document.addEventListener('keydown', function(e) {
     cerrarModal();
   }
 });
+
+// ── Auto-cálculo precio venta en producto nuevo ──
+document.getElementById('auto-pv')?.addEventListener('change', function() {
+  document.getElementById('pv-producto').disabled = this.checked;
+  calcPVPreview();
+});
+document.getElementById('margen-producto')?.addEventListener('input', calcPVPreview);
+document.getElementById('pv-producto')?.addEventListener('input', function() {
+  document.getElementById('auto-pv').checked = false;
+  this.disabled = false;
+});
+function calcPVPreview() {
+  const auto = document.getElementById('auto-pv');
+  const preview = document.getElementById('pv-preview');
+  if (auto && auto.checked) {
+    preview.textContent = '(según costo)';
+  } else {
+    preview.textContent = document.getElementById('pv-producto')?.value || '0.00';
+  }
+}
+
+// ── Campos condicionales en movimiento ──
+const movTipo = document.getElementById('mov-tipo');
+const movVenta = document.getElementById('mov-campos-venta');
+const movNormal = document.getElementById('mov-campos-normal');
+if (movTipo) {
+  movTipo.addEventListener('change', function() {
+    if (this.value === 'salida') {
+      movVenta.style.display = 'flex';
+      movNormal.style.display = 'none';
+    } else {
+      movVenta.style.display = 'none';
+      movNormal.style.display = 'flex';
+    }
+  });
+}
+
+// ── Auto-completar precio_venta al seleccionar producto ──
+const selProducto = document.querySelector('#form-mov select[name="producto"]');
+const inpPV = document.getElementById('mov-pv');
+const inpCosto = document.getElementById('mov-costo');
+const productosData = {{ productos_data|tojson }};
+if (selProducto && productosData) {
+  selProducto.addEventListener('change', function() {
+    const prod = productosData[this.value];
+    if (prod && prod.precio_venta > 0) {
+      inpPV.value = prod.precio_venta;
+      inpPV.placeholder = 'Venta C$ (auto)';
+    } else {
+      inpPV.value = '';
+      inpPV.placeholder = 'Venta C$';
+    }
+  });
+  // Also auto-fill from margen if user enters cost
+  inpCosto?.addEventListener('input', function() {
+    const prod = productosData[selProducto.value];
+    if (prod && prod.margen > 0 && this.value > 0) {
+      const calc = parseFloat(this.value) * (1 + prod.margen / 100);
+      inpPV.value = calc.toFixed(2);
+      inpPV.placeholder = 'Venta C$ (auto)';
+    }
+  });
+}
 </script>
 {% endblock %}

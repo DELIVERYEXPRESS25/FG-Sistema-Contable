@@ -140,7 +140,7 @@ def get_ventas_por_dia(data):
     for entry in data["diario"]:
         for mov in entry["movimientos"]:
             cuenta = mov["cuenta"]
-            if cuenta == "4001" and mov["tipo"] == "Haber":
+            if cuenta in ("4001", "4.1.01") and mov["tipo"] == "Haber":
                 ventas[entry["fecha"]] += mov["monto"]
     return dict(sorted(ventas.items()))
 
@@ -149,7 +149,7 @@ def get_ventas_por_mes(data):
     ventas = defaultdict(float)
     for entry in data["diario"]:
         for mov in entry["movimientos"]:
-            if mov["cuenta"] == "4001" and mov["tipo"] == "Haber":
+            if mov["cuenta"] in ("4001", "4.1.01") and mov["tipo"] == "Haber":
                 mes = entry["fecha"][:7]
                 ventas[mes] += mov["monto"]
     return dict(sorted(ventas.items()))
@@ -254,7 +254,7 @@ def calcular_total_comercializacion(data):
     total = 0.0
     detalle = []
     for cod in sorted(data["cuentas"].keys()):
-        if not cod.startswith("6"):
+        if not cod.startswith(("6", "5.2")):
             continue
         info = data["cuentas"][cod]
         if info.get("tipo") != "Gasto":
@@ -390,29 +390,21 @@ def calcular_movimientos_cierre(data, desde, hasta):
 def obtener_cuenta_capital_cierre(data, crear_si_no_existe=True):
     """
     Obtiene la cuenta de capital para registrar diferencias de cierre.
-    Prioridad: 3002 (Utilidades Retenidas) > 3001 (Capital).
-    
-    Args:
-        data: dict con estructura de datos
-        crear_si_no_existe: si True, crea Utilidades Retenidas si no existe
-    
-    Returns:
-        str: código de cuenta para diferencias
+    Prioridad: 3.3.02 (Utilidad de Ejercicios Anteriores) > 3.1 (Capital Social).
     """
-    for cod in ("3002", "3001"):
+    for cod in ("3.3.02", "3.1"):
         if cod in data.get("cuentas", {}):
             return cod
-    
+
     if crear_si_no_existe:
-        data.setdefault("cuentas", {})["3002"] = {
-            "nombre": "Utilidades Retenidas",
+        data.setdefault("cuentas", {})["3.3.02"] = {
+            "nombre": "Utilidad de Ejercicios Anteriores",
             "tipo": "Capital",
             "saldo": 0
         }
-        return "3002"
-    
-    # Si no encuentra nada y no puede crear, retorna cuenta por defecto
-    return "3002"
+        return "3.3.02"
+
+    return "3.3.02"
 
 
 def validar_cierre_posible(data, desde, hasta):
