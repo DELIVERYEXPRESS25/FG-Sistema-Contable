@@ -162,7 +162,7 @@
       <input type="text" name="nombre" placeholder="Nombre del producto" required style="padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;">
       <div style="display:flex;gap:8px;">
         <input type="number" name="precio_venta" id="pv-producto" step="0.01" min="0" placeholder="Precio venta C$" style="flex:1;padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;">
-        <input type="number" name="margen" id="margen-producto" step="0.1" min="0" placeholder="Margen %" value="4" style="width:80px;padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;">
+        <input type="number" name="margen" id="margen-producto" step="0.1" min="0" placeholder="Margen %" value="30" style="width:80px;padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;">
       </div>
       <div style="font-size:10px;color:var(--text-dim);display:flex;gap:8px;align-items:center;">
         <label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
@@ -244,8 +244,8 @@
       {% endif %}
       <span style="font-size:11px;color:var(--green);">Valor <strong>C$ {{ "%.2f"|format(info_peps.valor_inventario) }}</strong></span>
       {% endif %}
-      <button onclick="abrirRenombrar('{{ producto }}')" class="btn btn-outline btn-sm" title="Renombrar">✏️</button>
-      <form method="POST" action="/kardex/eliminar_producto" onsubmit="return confirm('¿Eliminar «{{ producto }}» y todos sus movimientos?')" style="display:inline;">
+      <button onclick="abrirRenombrar('{{ producto|replace("'","\\'") }}')" class="btn btn-outline btn-sm" title="Renombrar">✏️</button>
+      <form method="POST" action="/kardex/eliminar_producto" onsubmit="return confirm('¿Eliminar «{{ producto|replace("'","\\'") }}» y todos sus movimientos?')" style="display:inline;">
         <input type="hidden" name="producto" value="{{ producto }}">
         <button type="submit" class="btn btn-sm" style="background:rgba(231,76,60,0.12);color:var(--red);border:1px solid rgba(231,76,60,0.3);">🗑️</button>
       </form>
@@ -277,8 +277,10 @@
         <th style="text-align:center;">Acciones</th>
       </tr></thead>
       <tbody>
-        {% for mov in k|reverse %}
-        {% set real_idx = (k|length - 1) - loop.index0 %}
+        {% set total_movs = k|length %}
+        {% set disp = k[-50:] %}
+        {% for mov in disp|reverse %}
+        {% set real_idx = total_movs - 1 - loop.index0 %}
         <tr>
           <td style="white-space:nowrap;">{{ mov.fecha }}</td>
           <td>{% if mov.tipo == 'entrada' %}<span class="badge badge-green" style="font-size:10px;">📥</span>{% elif mov.tipo == 'salida' %}<span class="badge badge-red" style="font-size:10px;">📤</span>{% else %}<span class="badge badge-blue" style="font-size:10px;">🔄</span>{% endif %}</td>
@@ -294,7 +296,7 @@
           </td>
           <td style="text-align:right;font-weight:700;">{{ mov.saldo }}</td>
           <td style="text-align:center;white-space:nowrap;">
-            <button onclick="abrirEditar('{{ producto }}', {{ real_idx }}, '{{ mov.fecha }}', '{{ mov.descripcion or '' }}', {{ mov.cantidad }}, {{ mov.get('costo',0) }}, {{ mov.get('precio_venta',0) }})" class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 6px;">✏️</button>
+            <button onclick="abrirEditar('{{ producto|replace("'","\\'") }}', {{ real_idx }}, '{{ mov.fecha }}', '{{ (mov.descripcion or '')|replace("'","\\'") }}', {{ mov.cantidad }}, {{ mov.get('costo',0) }}, {{ mov.get('precio_venta',0) }})" class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 6px;">✏️</button>
             <form method="POST" action="/kardex/eliminar_movimiento" style="display:inline;" onsubmit="return confirm('¿Eliminar este movimiento?')">
               <input type="hidden" name="producto" value="{{ producto }}">
               <input type="hidden" name="idx" value="{{ real_idx }}">

@@ -15,9 +15,10 @@ def get_next_id(data, key):
 
 
 def ensure_ids(data):
-    skip_keys = {"pos_historial", "auditoria"}
-    for key, lista in data.items():
-        if key in skip_keys or not isinstance(lista, list) or not lista:
+    keys = {"diario", "ajustes", "caja_movimientos", "cuentas_cobrar", "gastos_comercializacion"}
+    for key in keys:
+        lista = data.get(key)
+        if not isinstance(lista, list) or not lista:
             continue
         seen = set()
         next_id_for_key = 1

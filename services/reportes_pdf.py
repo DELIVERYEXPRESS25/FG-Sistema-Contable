@@ -132,8 +132,25 @@ def pdf_balanza(data, desde=None, hasta=None, pdf=None):
     widths = [18, 60, 28, 28, 28, 28]
     p.encabezado_tabla(headers, widths)
     for item in c["balanza"]:
+        if item.get("es_header"):
+            p.set_font("Helvetica", "B", 7)
+            p.set_text_color(45, 45, 63)
+            p.cell(0, 5, ("  " * item.get("nivel", 0)) + item["nombre"], new_x="LMARGIN", new_y="NEXT")
+            continue
+        if item.get("es_subtotal"):
+            p.set_font("Helvetica", "B", 7)
+            p.set_text_color(45, 45, 63)
+            p.cell(widths[0], 5, "")
+            p.cell(widths[1], 5, item["nombre"][:35])
+            p.set_font("Helvetica", "", 7)
+            p.cell(widths[2], 5, p.celda_monto(item["debe"]), align="R")
+            p.cell(widths[3], 5, p.celda_monto(item["haber"]), align="R")
+            p.cell(widths[4], 5, p.celda_monto(item["saldo_debe"]), align="R")
+            p.cell(widths[5], 5, p.celda_monto(item["saldo_haber"]), align="R", new_x="LMARGIN", new_y="NEXT")
+            continue
+        p.set_font("Helvetica", "", 7)
         p.fila_tabla([
-            item["codigo"], item["nombre"][:35],
+            item["codigo"], ("  " + item["nombre"])[:35],
             p.celda_monto(item["debe"]), p.celda_monto(item["haber"]),
             p.celda_monto(item["saldo_debe"]), p.celda_monto(item["saldo_haber"]),
         ], widths, align=["L", "L", "R", "R", "R", "R"])
@@ -159,10 +176,13 @@ def pdf_estado_resultados(data, desde=None, hasta=None, pdf=None):
     p.set_text_color(46, 204, 113)
     p.cell(0, 7, "INGRESOS", new_x="LMARGIN", new_y="NEXT")
     for item in c["er_detalle_ing"]:
+        if item.get("tipo") == "header":
+            continue
         p.set_text_color(45, 45, 63)
+        p.set_font("Helvetica", "B" if item.get("tipo") == "subtotal" else "", 8)
+        p.cell(w[0], 6, ("  " * (item.get("nivel", 0) * 2)) + item["nombre"][:40])
+        p.cell(w[1], 6, p.celda_monto(item["saldo"]), align="R", new_x="LMARGIN", new_y="NEXT")
         p.set_font("Helvetica", "", 8)
-        p.cell(w[0], 6, item["nombre"][:40])
-        p.cell(w[1], 6, p.celda_monto(item["monto"]), align="R", new_x="LMARGIN", new_y="NEXT")
     p.set_font("Helvetica", "B", 8)
     p.set_text_color(46, 204, 113)
     p.cell(w[0], 6, "Total Ingresos")
@@ -172,10 +192,13 @@ def pdf_estado_resultados(data, desde=None, hasta=None, pdf=None):
     p.set_text_color(231, 76, 60)
     p.cell(0, 7, "GASTOS", new_x="LMARGIN", new_y="NEXT")
     for item in c["er_detalle_gas"]:
+        if item.get("tipo") == "header":
+            continue
         p.set_text_color(45, 45, 63)
+        p.set_font("Helvetica", "B" if item.get("tipo") == "subtotal" else "", 8)
+        p.cell(w[0], 6, ("  " * (item.get("nivel", 0) * 2)) + item["nombre"][:40])
+        p.cell(w[1], 6, p.celda_monto(item["saldo"]), align="R", new_x="LMARGIN", new_y="NEXT")
         p.set_font("Helvetica", "", 8)
-        p.cell(w[0], 6, item["nombre"][:40])
-        p.cell(w[1], 6, p.celda_monto(item["monto"]), align="R", new_x="LMARGIN", new_y="NEXT")
     p.set_font("Helvetica", "B", 8)
     p.set_text_color(231, 76, 60)
     p.cell(w[0], 6, "Total Gastos")
@@ -201,10 +224,13 @@ def pdf_balance_general(data, desde=None, hasta=None, pdf=None):
         p.set_text_color(*color_sel)
         p.cell(0, 7, nombre, new_x="LMARGIN", new_y="NEXT")
         for item in items:
+            if item.get("tipo") == "header":
+                continue
             p.set_text_color(45, 45, 63)
+            p.set_font("Helvetica", "B" if item.get("tipo") == "subtotal" else "", 8)
+            p.cell(w[0], 6, ("  " * (item.get("nivel", 0) * 2)) + item["nombre"][:40])
+            p.cell(w[1], 6, p.celda_monto(item.get("saldo", 0)), align="R", new_x="LMARGIN", new_y="NEXT")
             p.set_font("Helvetica", "", 8)
-            p.cell(w[0], 6, item["nombre"][:40])
-            p.cell(w[1], 6, p.celda_monto(item["saldo"]), align="R", new_x="LMARGIN", new_y="NEXT")
         p.set_font("Helvetica", "B", 8)
         p.set_text_color(*color_sel)
         p.cell(w[0], 6, f"Total {nombre}")

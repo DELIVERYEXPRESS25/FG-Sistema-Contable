@@ -55,10 +55,21 @@
     </thead>
     <tbody>
       {% for row in balanza %}
-        {% if row.debe != 0 or row.haber != 0 %}
+        {% if row.es_header %}
+      <tr><td colspan="7" style="font-weight:700;color:var(--text-bright);padding-left:{{ row.nivel * 20 }}px;padding-top:8px;">{{ row.nombre }}</td></tr>
+        {% elif row.es_subtotal %}
+      <tr class="totals-row">
+        <td colspan="2" style="padding-left:{{ row.nivel * 20 }}px;">{{ row.nombre }}</td>
+        <td></td>
+        <td style="text-align:right;" class="money">C$ {{ "%.2f"|format(row.debe) }}</td>
+        <td style="text-align:right;" class="money">C$ {{ "%.2f"|format(row.haber) }}</td>
+        <td style="text-align:right;" class="money money-pos">C$ {{ "%.2f"|format(row.saldo_debe) }}</td>
+        <td style="text-align:right;" class="money money-neg">C$ {{ "%.2f"|format(row.saldo_haber) }}</td>
+      </tr>
+        {% elif row.debe != 0 or row.haber != 0 %}
       <tr>
         <td><span class="badge badge-blue" style="font-size:10px;">{{ row.codigo }}</span></td>
-        <td style="color:var(--text-bright);font-weight:500;">{{ row.nombre }}</td>
+        <td style="color:var(--text-bright);font-weight:500;padding-left:{{ (row.nivel + 1) * 20 }}px;">{{ row.nombre }}</td>
         <td>
           <span class="badge {% if row.tipo == 'Activo' %}badge-blue{% elif row.tipo == 'Pasivo' %}badge-red{% elif row.tipo == 'Capital' %}badge-green{% elif row.tipo == 'Ingreso' %}badge-green{% else %}badge-yellow{% endif %}" style="font-size:10px;">{{ row.tipo }}</span>
         </td>

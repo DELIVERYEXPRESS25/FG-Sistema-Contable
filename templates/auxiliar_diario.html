@@ -60,13 +60,14 @@
     <tbody>
       {% set ns = namespace(g_debe=0, g_haber=0) %}
       {% for cod in cuentas_con_mov %}
-        {% set movs_cta = movimientos|selectattr('cuenta', 'equalto', cod)|list %}
-        {% set d = movs_cta|selectattr('tipo', 'equalto', 'Debe')|sum(attribute='monto') %}
-        {% set h = movs_cta|selectattr('tipo', 'equalto', 'Haber')|sum(attribute='monto') %}
+        {% set sc = sumario_ctas.get(cod, {"debe":0,"haber":0,"movs":0}) %}
+        {% set d = sc.debe %}
+        {% set h = sc.haber %}
         {% set saldo_act = saldos_cuenta.get(cod, 0) %}
         {% set ns.g_debe = ns.g_debe + d %}
         {% set ns.g_haber = ns.g_haber + h %}
         {% set info = cuentas.get(cod, {}) %}
+        {% set total_movs_cta = sc.movs %}
         <tr>
           <td><span class="badge badge-blue" style="font-size:10px;">{{ cod }}</span></td>
           <td style="color:var(--text-bright);">{{ info.get('nombre', cod) if info is mapping else info }}</td>
@@ -74,7 +75,7 @@
           <td style="text-align:right;" class="money money-pos">C$ {{ "%.2f"|format(d) }}</td>
           <td style="text-align:right;" class="money money-neg">C$ {{ "%.2f"|format(h) }}</td>
           <td style="text-align:right;" class="money {% if saldo_act >= 0 %}money-pos{% else %}money-neg{% endif %}">C$ {{ "%.2f"|format(saldo_act) }}</td>
-          <td><span class="badge badge-blue" style="font-size:10px;">{{ movs_cta|length }}</span></td>
+          <td><span class="badge badge-blue" style="font-size:10px;">{{ total_movs_cta }}</span></td>
         </tr>
       {% endfor %}
       <tr class="totals-row">
@@ -146,7 +147,7 @@
       <tr class="mov-row" data-cuenta="{{ mov.cuenta }}" data-fecha="{{ mov.fecha }}" data-tipo="{{ mov.tipo }}" data-search="{{ (mov.descripcion ~ ' ' ~ (mov.ref or '') ~ ' ' ~ mov.cuenta ~ ' ' ~ mov.nombre_cuenta)|lower }}">
         <td><span class="badge badge-blue" style="font-size:10px;">{{ loop.index }}</span></td>
         <td style="white-space:nowrap;">{{ mov.fecha }}</td>
-        <td><a href="/diario/editar/{{ mov.asiento_id }}" style="color:var(--accent);text-decoration:none;font-weight:600;">#{{ mov.asiento_id }}</a></td>
+        <td>{% if mov.asiento_id > 0 %}<a href="/diario/editar/{{ mov.asiento_id }}" style="color:var(--accent);text-decoration:none;font-weight:600;">#{{ mov.asiento_id }}</a>{% else %}<span style="color:var(--text-dim);font-weight:600;">AJ{{ mov.asiento_id }}</span>{% endif %}</td>
         <td style="color:var(--text-bright);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">{{ mov.descripcion }}</td>
         <td>
           <span class="badge" style="font-size:10px;background:rgba(79,140,255,0.12);color:var(--accent);font-weight:700;">{{ mov.cuenta }}</span>

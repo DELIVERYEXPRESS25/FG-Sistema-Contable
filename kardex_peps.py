@@ -68,10 +68,19 @@ def agregar_entrada_peps(data, producto_codigo, fecha, cantidad, costo_unitario,
             'stock_total': 0,
             'costo_promedio': 0,
             'precio_venta': precio_venta,
-            'margen': 4,
+            'margen': 30,
         }
     elif precio_venta > 0:
         data['kardex_peps'][producto_codigo]['precio_venta'] = precio_venta
+
+    # Sincronizar precio_venta con productos
+    if precio_venta > 0 and 'productos' in data and producto_codigo in data['productos']:
+        prod = data['productos'][producto_codigo]
+        if isinstance(prod, dict):
+            if not prod.get('precio_venta'):
+                prod['precio_venta'] = precio_venta
+            if not prod.get('margen') and data['kardex_peps'][producto_codigo].get('margen'):
+                prod['margen'] = data['kardex_peps'][producto_codigo]['margen']
     
     # Agregar nuevo lote
     lote = LotePEPS(fecha, cantidad, costo_unitario)
@@ -208,9 +217,12 @@ def recalcular_costo_promedio(data, producto_codigo):
     
     return data
 
-def obtener_lotes_disponibles(data, producto_codigo):
+def obtener_lotes_disponibles(data, producto_codigo, max_lotes=None):
     """
     Obtiene lista de lotes disponibles para un producto.
+    
+    Args:
+        max_lotes: límite de lotes a retornar (None = todos).
     
     Returns:
         list: Lista de diccionarios con info de cada lote
@@ -228,12 +240,17 @@ def obtener_lotes_disponibles(data, producto_codigo):
                 'costo_unitario': lote_dict['costo_unitario'],
                 'valor_total': lote_dict['cantidad_restante'] * lote_dict['costo_unitario']
             })
+            if max_lotes is not None and len(lotes) >= max_lotes:
+                break
     
     return lotes
 
-def obtener_info_producto_peps(data, producto_codigo):
+def obtener_info_producto_peps(data, producto_codigo, max_lotes=None):
     """
     Obtiene información completa del producto en PEPS.
+    
+    Args:
+        max_lotes: si se especifica, limita la cantidad de lotes retornados.
     
     Returns:
         dict: {
@@ -252,7 +269,7 @@ def obtener_info_producto_peps(data, producto_codigo):
         }
     
     producto_peps = data['kardex_peps'][producto_codigo]
-    lotes = obtener_lotes_disponibles(data, producto_codigo)
+    lotes = obtener_lotes_disponibles(data, producto_codigo, max_lotes=max_lotes)
     
     valor_inventario = sum(lote['valor_total'] for lote in lotes)
     
@@ -263,12 +280,13 @@ def obtener_info_producto_peps(data, producto_codigo):
         'valor_inventario': valor_inventario
     }
 
-def generar_reporte_kardex_peps(data, producto_codigo=None):
+def generar_reporte_kardex_peps(data, producto_codigo=None, max_lotes=None):
     """
     Genera datos para reporte de Kardex PEPS.
     
     Args:
         producto_codigo: Si se especifica, solo ese producto. Si es None, todos.
+        max_lotes: límite de lotes por producto (None = todos).
     
     Returns:
         dict: Datos organizados para el reporte
@@ -298,7 +316,7 @@ def generar_reporte_kardex_peps(data, producto_codigo=None):
     
     for codigo in productos:
         try:
-            info = obtener_info_producto_peps(data, codigo)
+            info = obtener_info_producto_peps(data, codigo, max_lotes=max_lotes)
             
             # Obtener nombre del producto
             nombre = codigo  # Default: usar el código

@@ -4,6 +4,62 @@ from decimal import Decimal, ROUND_HALF_UP
 from services.helpers import tipo_saldo
 
 
+def _es_padre(codigo, cuentas):
+    """True si el código tiene al menos una subcuenta dentro del catálogo."""
+    prefix = codigo + "."
+    return any(c.startswith(prefix) for c in cuentas)
+
+
+def _construir_lista_jerarquica(cuentas, mayor, tipo_cuenta, calcular_saldo):
+    """
+    Construye lista jerárquica para reportes.
+    
+    Returns lista de dicts con: tipo (header/leaf/subtotal), nombre, saldo, nivel.
+    """
+    codes = sorted(c for c, info in cuentas.items() if info["tipo"] == tipo_cuenta)
+
+    # First pass: headers + leaves
+    items = []
+    for codigo in codes:
+        info = cuentas[codigo]
+        nivel = codigo.count(".")
+        es_padre = _es_padre(codigo, cuentas)
+        if es_padre:
+            items.append({"tipo": "header", "nombre": info["nombre"], "nivel": nivel, "codigo": codigo})
+        else:
+            saldo = calcular_saldo(codigo, info)
+            items.append({"tipo": "leaf", "nombre": info["nombre"], "saldo": saldo, "nivel": nivel, "codigo": codigo})
+
+    # Second pass: insert subtotals bottom-up
+    max_nivel = max((item["nivel"] for item in items), default=0)
+    for nivel in range(max_nivel, -1, -1):
+        i = 0
+        while i < len(items):
+            item = items[i]
+            if item["tipo"] == "header" and item["nivel"] == nivel:
+                total = 0
+                j = i + 1
+                while j < len(items):
+                    child = items[j]
+                    if child["tipo"] == "header" and child["nivel"] <= nivel:
+                        break
+                    if child["tipo"] == "leaf" and child.get("codigo", "").startswith(item["codigo"] + "."):
+                        total += child.get("saldo", 0)
+                    j += 1
+                subtotal = {
+                    "tipo": "subtotal",
+                    "nombre": "Total " + item["nombre"],
+                    "saldo": total,
+                    "nivel": nivel,
+                }
+                items.insert(j, subtotal)
+                i = j + 1
+            else:
+                i += 1
+
+    return items
+
+
 def calcular_mayor(data):
     mayor = defaultdict(lambda: {"debe": 0, "haber": 0, "movimientos": []})
     for entry in data["diario"]:
@@ -49,7 +105,12 @@ def calcular_balanza(data):
     total_haber = 0
     total_saldo_d = 0
     total_saldo_h = 0
-    for codigo in sorted(cuentas.keys()):
+
+    def _es_padre_balanza(codigo):
+        prefix = codigo + "."
+        return any(c.startswith(prefix) for c in cuentas)
+
+    def _calc_row(codigo):
         info = cuentas[codigo]
         debe = mayor[codigo]["debe"] if codigo in mayor else 0
         haber = mayor[codigo]["haber"] if codigo in mayor else 0
@@ -62,76 +123,122 @@ def calcular_balanza(data):
             saldo = haber - debe
             saldo_h = max(saldo, 0)
             saldo_d = max(-saldo, 0)
-        balanza.append(
-            {
-                "codigo": codigo,
-                "nombre": info["nombre"],
-                "tipo": info["tipo"],
-                "debe": debe,
-                "haber": haber,
-                "saldo_debe": saldo_d,
-                "saldo_haber": saldo_h,
-            }
-        )
-        total_debe += debe
-        total_haber += haber
-        total_saldo_d += saldo_d
-        total_saldo_h += saldo_h
+        return {"debe": debe, "haber": haber, "saldo_debe": saldo_d, "saldo_haber": saldo_h}
+
+    # Group by tipo, then process hierarchically within each
+    for tipo in ("Activo", "Pasivo", "Capital", "Ingreso", "Gasto"):
+        codes = sorted(c for c, info in cuentas.items() if info["tipo"] == tipo)
+
+        # First pass: headers + leaves
+        items = []
+        for codigo in codes:
+            info = cuentas[codigo]
+            nivel = codigo.count(".")
+            if _es_padre_balanza(codigo):
+                items.append({"tipo": "header", "nombre": info["nombre"], "nivel": nivel, "codigo": codigo})
+            else:
+                items.append({"tipo": "leaf", "nombre": info["nombre"], "nivel": nivel, "codigo": codigo, "_row": _calc_row(codigo)})
+
+        # Insert subtotals bottom-up
+        max_nivel = max((item["nivel"] for item in items), default=0)
+        for nivel in range(max_nivel, -1, -1):
+            i = 0
+            while i < len(items):
+                item = items[i]
+                if item["tipo"] == "header" and item["nivel"] == nivel:
+                    total_d = 0; total_h = 0; total_sd = 0; total_sh = 0
+                    j = i + 1
+                    while j < len(items):
+                        child = items[j]
+                        if child["tipo"] == "header" and child["nivel"] <= nivel:
+                            break
+                        if child["tipo"] == "leaf" and child.get("codigo", "").startswith(item["codigo"] + "."):
+                            r = child.get("_row", {})
+                            total_d += r.get("debe", 0)
+                            total_h += r.get("haber", 0)
+                            total_sd += r.get("saldo_debe", 0)
+                            total_sh += r.get("saldo_haber", 0)
+                        j += 1
+                    sub = {
+                        "tipo": "subtotal",
+                        "nombre": "Total " + item["nombre"],
+                        "nivel": nivel,
+                        "_row": {"debe": total_d, "haber": total_h, "saldo_debe": total_sd, "saldo_haber": total_sh},
+                    }
+                    items.insert(j, sub)
+                    i = j + 1
+                else:
+                    i += 1
+
+        # Flatten into balanza list
+        for item in items:
+            r = item.get("_row", {"debe": 0, "haber": 0, "saldo_debe": 0, "saldo_haber": 0})
+            balanza.append({
+                "codigo": item.get("codigo", ""),
+                "nombre": item["nombre"],
+                "tipo": cuentas.get(item.get("codigo", ""), {}).get("tipo", "") if item["tipo"] == "leaf" else "",
+                "debe": r["debe"],
+                "haber": r["haber"],
+                "saldo_debe": r["saldo_debe"],
+                "saldo_haber": r["saldo_haber"],
+                "es_header": item["tipo"] == "header",
+                "es_subtotal": item["tipo"] == "subtotal",
+                "nivel": item["nivel"],
+            })
+            if item["tipo"] != "header":
+                total_debe += r["debe"]
+                total_haber += r["haber"]
+                total_saldo_d += r["saldo_debe"]
+                total_saldo_h += r["saldo_haber"]
+
     return balanza, total_debe, total_haber, total_saldo_d, total_saldo_h
 
 
 def calcular_estado_resultados(data):
     mayor = calcular_mayor(data)
     cuentas = data["cuentas"]
-    ingresos = 0
-    gastos = 0
-    detalle_ingresos = []
-    detalle_gastos = []
-    for codigo, info in cuentas.items():
+
+    def _saldo_ingreso(codigo, info):
         debe = mayor[codigo]["debe"] if codigo in mayor else 0
         haber = mayor[codigo]["haber"] if codigo in mayor else 0
-        if info["tipo"] == "Ingreso":
-            monto = haber - debe
-            ingresos += monto
-            detalle_ingresos.append({"nombre": info["nombre"], "monto": monto})
-        elif info["tipo"] == "Gasto":
-            monto = debe - haber
-            gastos += monto
-            detalle_gastos.append({"nombre": info["nombre"], "monto": monto})
-    utilidad = ingresos - gastos
-    return detalle_ingresos, ingresos, detalle_gastos, gastos, utilidad
+        return haber - debe
+
+    def _saldo_gasto(codigo, info):
+        debe = mayor[codigo]["debe"] if codigo in mayor else 0
+        haber = mayor[codigo]["haber"] if codigo in mayor else 0
+        return debe - haber
+
+    detalle_ingresos = _construir_lista_jerarquica(cuentas, mayor, "Ingreso", _saldo_ingreso)
+    detalle_gastos = _construir_lista_jerarquica(cuentas, mayor, "Gasto", _saldo_gasto)
+
+    total_ingresos = sum(item["saldo"] for item in detalle_ingresos if item["tipo"] == "leaf")
+    total_gastos = sum(item["saldo"] for item in detalle_gastos if item["tipo"] == "leaf")
+    utilidad = total_ingresos - total_gastos
+
+    return detalle_ingresos, total_ingresos, detalle_gastos, total_gastos, utilidad
 
 
 def calcular_balance_general(data):
     mayor = calcular_mayor(data)
     cuentas = data["cuentas"]
     _, _, _, _, utilidad = calcular_estado_resultados(data)
-    activos = []
-    pasivos = []
-    capital_items = []
-    total_activo = 0
-    total_pasivo = 0
-    total_capital = 0
-    for codigo in sorted(cuentas.keys()):
-        info = cuentas[codigo]
+
+    def _saldo(codigo, info):
         debe = mayor[codigo]["debe"] if codigo in mayor else 0
         haber = mayor[codigo]["haber"] if codigo in mayor else 0
         ts = tipo_saldo(info["tipo"])
-        if ts == "Debe":
-            saldo = debe - haber
-        else:
-            saldo = haber - debe
-        if info["tipo"] == "Activo":
-            activos.append({"nombre": info["nombre"], "saldo": saldo})
-            total_activo += saldo
-        elif info["tipo"] == "Pasivo":
-            pasivos.append({"nombre": info["nombre"], "saldo": saldo})
-            total_pasivo += saldo
-        elif info["tipo"] == "Capital":
-            capital_items.append({"nombre": info["nombre"], "saldo": saldo})
-            total_capital += saldo
+        return (debe - haber) if ts == "Debe" else (haber - debe)
+
+    activos = _construir_lista_jerarquica(cuentas, mayor, "Activo", _saldo)
+    pasivos = _construir_lista_jerarquica(cuentas, mayor, "Pasivo", _saldo)
+    capital_items = _construir_lista_jerarquica(cuentas, mayor, "Capital", _saldo)
+
+    total_activo = sum(item["saldo"] for item in activos if item["tipo"] == "leaf")
+    total_pasivo = sum(item["saldo"] for item in pasivos if item["tipo"] == "leaf")
+    total_capital = sum(item["saldo"] for item in capital_items if item["tipo"] == "leaf")
     total_capital += utilidad
-    capital_items.append({"nombre": "Utilidad del Periodo", "saldo": utilidad})
+    capital_items.append({"tipo": "leaf", "nombre": "Utilidad del Periodo", "saldo": utilidad, "nivel": 1})
+
     return activos, total_activo, pasivos, total_pasivo, capital_items, total_capital
 
 
@@ -390,7 +497,7 @@ def calcular_movimientos_cierre(data, desde, hasta):
 def obtener_cuenta_capital_cierre(data, crear_si_no_existe=True):
     """
     Obtiene la cuenta de capital para registrar diferencias de cierre.
-    Prioridad: 3.3.02 (Utilidad de Ejercicios Anteriores) > 3.1 (Capital Social).
+    Prioridad: 3.3.02 (Pérdida del Ejercicio) > 3.1 (Capital Social).
     """
     for cod in ("3.3.02", "3.1"):
         if cod in data.get("cuentas", {}):
@@ -398,7 +505,7 @@ def obtener_cuenta_capital_cierre(data, crear_si_no_existe=True):
 
     if crear_si_no_existe:
         data.setdefault("cuentas", {})["3.3.02"] = {
-            "nombre": "Utilidad de Ejercicios Anteriores",
+            "nombre": "Pérdida del Ejercicio",
             "tipo": "Capital",
             "saldo": 0
         }

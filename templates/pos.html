@@ -200,7 +200,7 @@
     <div class="card" style="padding:12px;flex:1;display:flex;flex-direction:column;overflow:hidden;">
       <div class="producto-grid" id="prodGrid">
         {% for p in productos %}
-        <div class="producto-btn {% if p.saldo <= 0 %}sin-stock{% endif %}" data-nombre="{{ p.nombre|lower }}" onclick="{% if p.saldo > 0 %}agregarCarrito('{{ p.nombre|replace("'","\\'") }}'){% endif %}">
+        <div class="producto-btn {% if p.saldo <= 0 %}sin-stock{% endif %}" data-nombre="{{ p.nombre }}">
           <span class="stock-badge {% if p.saldo <= 0 %}red{% elif p.saldo <= 5 %}yellow{% else %}green{% endif %}">{{ p.saldo|int }}</span>
           <div class="p-nombre">{{ p.nombre }}</div>
           <div class="p-precio-venta">C$ {{ "%.2f"|format(p.precio_venta) }}</div>
@@ -322,7 +322,7 @@
 let carrito = {};
 const stockMap = {
   {% for p in productos %}
-  "{{ p.nombre }}": { stock: {{ p.saldo }}, costo: {{ p.costo }}, precio_venta: {{ p.precio_venta }} },
+  {{ p.nombre|tojson }}: { stock: {{ p.saldo }}, costo: {{ p.costo }}, precio_venta: {{ p.precio_venta }} },
   {% endfor %}
 };
 
@@ -388,16 +388,16 @@ function renderCarrito() {
     total += sub;
     totalCosto += cost;
     totalQty += item.cantidad;
-    const safeName = nombre.replace(/'/g, "\\'");
-    html += '<div class="carrito-item">' +
+    const enc = nombre.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+    html += '<div class="carrito-item" data-nombre="' + enc + '">' +
       '<div class="ci-nombre">' + nombre +
         '<span class="ci-precio">C$ ' + item.precio.toFixed(2) + '/u · Costo C$ ' + item.costo.toFixed(2) + '/u</span>' +
         '<span class="ci-ganancia">+C$ ' + gan.toFixed(2) + '</span>' +
       '</div>' +
       '<div class="ci-qty">' +
-        '<button onclick="cambiarCantidad(\'' + safeName + '\', -1)">−</button>' +
+        '<button class="btn-qty" data-delta="-1">−</button>' +
         '<span class="qty-num">' + item.cantidad + '</span>' +
-        '<button onclick="cambiarCantidad(\'' + safeName + '\', 1)">+</button>' +
+        '<button class="btn-qty" data-delta="1">+</button>' +
       '</div>' +
       '<div class="ci-subtotal">C$ ' + sub.toFixed(2) + '</div>' +
     '</div>';
@@ -413,6 +413,24 @@ function renderCarrito() {
 }
 
 function limpiarCarrito() { carrito = {}; renderCarrito(); }
+
+// ── EVENTOS CARRITO (delegación) ──
+document.getElementById('carritoItems').addEventListener('click', function(e) {
+  const btn = e.target.closest('.btn-qty');
+  if (!btn) return;
+  const item = btn.closest('.carrito-item');
+  if (!item) return;
+  const nombre = item.dataset.nombre;
+  const delta = parseInt(btn.dataset.delta);
+  cambiarCantidad(nombre, delta);
+});
+
+// ── EVENTOS PRODUCTOS (delegación) ──
+document.getElementById('prodGrid').addEventListener('click', function(e) {
+  const btn = e.target.closest('.producto-btn');
+  if (!btn || btn.classList.contains('sin-stock')) return;
+  agregarCarrito(btn.dataset.nombre);
+});
 
 // ── PROCESAR ──
 function procesarVenta() {
@@ -476,6 +494,6 @@ setInterval(function() {
       }
     });
   });
-}, 15000);
+}, 30000);
 </script>
 {% endblock %}

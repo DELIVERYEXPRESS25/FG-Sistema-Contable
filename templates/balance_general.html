@@ -48,10 +48,19 @@
         <thead><tr><th>Cuenta</th><th style="text-align:right;">Saldo C$</th></tr></thead>
         <tbody>
           {% for item in activos %}
-          <tr>
-            <td style="color:var(--text-bright);">{{ item.nombre }}</td>
-            <td style="text-align:right;" class="money {% if item.saldo >= 0 %}money-pos{% else %}money-neg{% endif %}">C$ {{ "%.2f"|format(item.saldo) }}</td>
+          {% if item.tipo == "header" %}
+          <tr><td style="font-weight:700;color:var(--text-bright);padding-left:{{ item.nivel * 16 }}px;">{{ item.nombre }}</td><td></td></tr>
+          {% elif item.tipo == "subtotal" %}
+          <tr class="totals-row">
+            <td style="padding-left:{{ item.nivel * 16 }}px;">{{ item.nombre }}</td>
+            <td style="text-align:right;" class="money">{% if item.saldo != 0 %}C$ {{ "%.2f"|format(item.saldo) }}{% endif %}</td>
           </tr>
+          {% else %}
+          <tr>
+            <td style="color:var(--text-bright);padding-left:{{ (item.nivel + 1) * 16 }}px;">{{ item.nombre }}</td>
+            <td style="text-align:right;" class="money {% if item.saldo >= 0 %}money-pos{% else %}money-neg{% endif %}">{% if item.saldo != 0 %}C$ {{ "%.2f"|format(item.saldo) }}{% endif %}</td>
+          </tr>
+          {% endif %}
           {% endfor %}
           <tr class="totals-row">
             <td>TOTAL ACTIVOS</td>
@@ -73,10 +82,19 @@
         <thead><tr><th>Cuenta</th><th style="text-align:right;">Saldo C$</th></tr></thead>
         <tbody>
           {% for item in pasivos %}
-          <tr>
-            <td style="color:var(--text-bright);">{{ item.nombre }}</td>
-            <td style="text-align:right;" class="money money-neg">C$ {{ "%.2f"|format(item.saldo) }}</td>
+          {% if item.tipo == "header" %}
+          <tr><td style="font-weight:700;color:var(--text-bright);padding-left:{{ item.nivel * 16 }}px;">{{ item.nombre }}</td><td></td></tr>
+          {% elif item.tipo == "subtotal" %}
+          <tr class="totals-row">
+            <td style="padding-left:{{ item.nivel * 16 }}px;">{{ item.nombre }}</td>
+            <td style="text-align:right;" class="money">{% if item.saldo != 0 %}C$ {{ "%.2f"|format(item.saldo) }}{% endif %}</td>
           </tr>
+          {% else %}
+          <tr>
+            <td style="color:var(--text-bright);padding-left:{{ (item.nivel + 1) * 16 }}px;">{{ item.nombre }}</td>
+            <td style="text-align:right;" class="money money-neg">{% if item.saldo != 0 %}C$ {{ "%.2f"|format(item.saldo) }}{% endif %}</td>
+          </tr>
+          {% endif %}
           {% endfor %}
           <tr class="totals-row">
             <td>TOTAL PASIVOS</td>
@@ -95,10 +113,19 @@
         <thead><tr><th>Cuenta</th><th style="text-align:right;">Saldo C$</th></tr></thead>
         <tbody>
           {% for item in capital %}
-          <tr>
-            <td style="color:var(--text-bright);">{{ item.nombre }}</td>
-            <td style="text-align:right;" class="money {% if item.saldo >= 0 %}money-pos{% else %}money-neg{% endif %}">C$ {{ "%.2f"|format(item.saldo) }}</td>
+          {% if item.tipo == "header" %}
+          <tr><td style="font-weight:700;color:var(--text-bright);padding-left:{{ item.nivel * 16 }}px;">{{ item.nombre }}</td><td></td></tr>
+          {% elif item.tipo == "subtotal" %}
+          <tr class="totals-row">
+            <td style="padding-left:{{ item.nivel * 16 }}px;">{{ item.nombre }}</td>
+            <td style="text-align:right;" class="money">{% if item.saldo != 0 %}C$ {{ "%.2f"|format(item.saldo) }}{% endif %}</td>
           </tr>
+          {% else %}
+          <tr>
+            <td style="color:var(--text-bright);padding-left:{{ (item.nivel + 1) * 16 }}px;">{{ item.nombre }}</td>
+            <td style="text-align:right;" class="money {% if item.saldo >= 0 %}money-pos{% else %}money-neg{% endif %}">{% if item.saldo != 0 %}C$ {{ "%.2f"|format(item.saldo) }}{% endif %}</td>
+          </tr>
+          {% endif %}
           {% endfor %}
           <tr class="totals-row">
             <td>TOTAL CAPITAL</td>
@@ -135,9 +162,17 @@
     <div>
       <div style="color:var(--accent);font-weight:700;font-size:13px;padding:8px 0 4px;">ACTIVOS</div>
       {% for item in activos %}
-      <div style="display:flex;justify-content:space-between;padding:5px 0 5px 16px;font-size:13px;">
-        <span>{{ item.nombre }}</span><span class="money money-pos">C$ {{ "%.2f"|format(item.saldo) }}</span>
+      {% if item.tipo == "header" %}
+      <div style="font-weight:700;font-size:13px;color:var(--text-bright);padding:6px 0 2px {{ item.nivel * 16 + 16 }}px;">{{ item.nombre }}</div>
+      {% elif item.tipo == "subtotal" %}
+      <div style="border-top:1px solid var(--card-border);margin-top:4px;padding-top:4px;display:flex;justify-content:space-between;font-weight:600;padding-left:{{ item.nivel * 16 + 16 }}px;">
+        <span>{{ item.nombre }}</span>{% if item.saldo != 0 %}<span class="money">C$ {{ "%.2f"|format(item.saldo) }}</span>{% endif %}
       </div>
+      {% else %}
+      <div style="display:flex;justify-content:space-between;padding:5px 0 5px {{ (item.nivel + 1) * 16 + 16 }}px;font-size:13px;">
+        <span>{{ item.nombre }}</span>{% if item.saldo != 0 %}<span class="money money-pos">C$ {{ "%.2f"|format(item.saldo) }}</span>{% endif %}
+      </div>
+      {% endif %}
       {% endfor %}
       <div style="border-top:2px solid var(--card-border);margin-top:6px;padding-top:6px;display:flex;justify-content:space-between;font-weight:700;color:var(--text-bright);">
         <span>Total Activos</span><span class="money">C$ {{ "%.2f"|format(total_activo) }}</span>
@@ -146,9 +181,17 @@
     <div>
       <div style="color:var(--red);font-weight:700;font-size:13px;padding:8px 0 4px;">PASIVOS</div>
       {% for item in pasivos %}
-      <div style="display:flex;justify-content:space-between;padding:5px 0 5px 16px;font-size:13px;">
-        <span>{{ item.nombre }}</span><span class="money money-neg">C$ {{ "%.2f"|format(item.saldo) }}</span>
+      {% if item.tipo == "header" %}
+      <div style="font-weight:700;font-size:13px;color:var(--text-bright);padding:6px 0 2px {{ item.nivel * 16 + 16 }}px;">{{ item.nombre }}</div>
+      {% elif item.tipo == "subtotal" %}
+      <div style="border-top:1px solid var(--card-border);margin-top:4px;padding-top:4px;display:flex;justify-content:space-between;font-weight:600;padding-left:{{ item.nivel * 16 + 16 }}px;">
+        <span>{{ item.nombre }}</span>{% if item.saldo != 0 %}<span class="money">C$ {{ "%.2f"|format(item.saldo) }}</span>{% endif %}
       </div>
+      {% else %}
+      <div style="display:flex;justify-content:space-between;padding:5px 0 5px {{ (item.nivel + 1) * 16 + 16 }}px;font-size:13px;">
+        <span>{{ item.nombre }}</span>{% if item.saldo != 0 %}<span class="money money-neg">C$ {{ "%.2f"|format(item.saldo) }}</span>{% endif %}
+      </div>
+      {% endif %}
       {% endfor %}
       <div style="border-top:1px solid var(--card-border);margin-top:4px;padding-top:4px;display:flex;justify-content:space-between;font-weight:600;">
         <span>Total Pasivos</span><span class="money">C$ {{ "%.2f"|format(total_pasivo) }}</span>
@@ -156,9 +199,17 @@
 
       <div style="color:var(--green);font-weight:700;font-size:13px;padding:12px 0 4px;">CAPITAL</div>
       {% for item in capital %}
-      <div style="display:flex;justify-content:space-between;padding:5px 0 5px 16px;font-size:13px;">
-        <span>{{ item.nombre }}</span><span class="money {% if item.saldo >= 0 %}money-pos{% else %}money-neg{% endif %}">C$ {{ "%.2f"|format(item.saldo) }}</span>
+      {% if item.tipo == "header" %}
+      <div style="font-weight:700;font-size:13px;color:var(--text-bright);padding:6px 0 2px {{ item.nivel * 16 + 16 }}px;">{{ item.nombre }}</div>
+      {% elif item.tipo == "subtotal" %}
+      <div style="border-top:1px solid var(--card-border);margin-top:4px;padding-top:4px;display:flex;justify-content:space-between;font-weight:600;padding-left:{{ item.nivel * 16 + 16 }}px;">
+        <span>{{ item.nombre }}</span>{% if item.saldo != 0 %}<span class="money">C$ {{ "%.2f"|format(item.saldo) }}</span>{% endif %}
       </div>
+      {% else %}
+      <div style="display:flex;justify-content:space-between;padding:5px 0 5px {{ (item.nivel + 1) * 16 + 16 }}px;font-size:13px;">
+        <span>{{ item.nombre }}</span>{% if item.saldo != 0 %}<span class="money {% if item.saldo >= 0 %}money-pos{% else %}money-neg{% endif %}">C$ {{ "%.2f"|format(item.saldo) }}</span>{% endif %}
+      </div>
+      {% endif %}
       {% endfor %}
       <div style="border-top:2px solid var(--card-border);margin-top:6px;padding-top:6px;display:flex;justify-content:space-between;font-weight:700;color:var(--text-bright);">
         <span>Total Pasivos + Capital</span><span class="money">C$ {{ "%.2f"|format(total_pasivo + total_capital) }}</span>
