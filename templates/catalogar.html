@@ -41,7 +41,7 @@
   <form method="POST" action="/catalogar/nueva" style="display:grid;grid-template-columns:140px 1fr 150px auto;gap:10px;align-items:end;">
     <div class="form-group" style="margin:0;">
       <label>Código</label>
-      <input type="text" name="codigo" placeholder="Ej: 1001" required style="width:100%;">
+      <input type="text" name="codigo" placeholder="Ej: 1.1.06" required style="width:100%;">
     </div>
     <div class="form-group" style="margin:0;">
       <label>Nombre</label>
@@ -90,25 +90,15 @@
       {% for cod, info in cuentas %}
       <tr>
         <td><strong>{{ cod }}</strong></td>
-        <td>
-          <form method="POST" action="/catalogar/editar" style="display:flex;gap:6px;align-items:center;" onsubmit="return confirm('¿Guardar cambios para {{ cod }}?')">
-            <input type="hidden" name="codigo" value="{{ cod }}">
-            <input type="text" name="nombre" value="{{ info.nombre }}" required
-              style="padding:4px 8px;font-size:12px;width:180px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text);">
-            <select name="tipo" style="padding:4px 6px;font-size:11px;border-radius:6px;border:1px solid var(--border);background:var(--bg3);color:var(--text);">
-              {% for t in ['Activo','Pasivo','Capital','Ingreso','Gasto'] %}
-              <option value="{{ t }}" {% if info.tipo == t %}selected{% endif %}>{{ t }}</option>
-              {% endfor %}
-            </select>
-            <button type="submit" class="btn btn-outline" style="padding:4px 10px;font-size:11px;text-decoration:none;">💾</button>
-          </form>
-        </td>
-        <td><span class="badge" style="font-size:10px;{% if info.tipo == 'Activo' %}background:rgba(79,140,255,0.15);color:var(--accent);{% elif info.tipo == 'Pasivo' %}background:rgba(231,76,60,0.15);color:var(--red);{% elif info.tipo == 'Capital' %}background:rgba(46,204,113,0.15);color:var(--green);{% elif info.tipo == 'Ingreso' %}background:rgba(155,89,182,0.15);color:#9b59b6;{% else %}background:rgba(243,156,18,0.15);color:#f39c12;{% endif %}">{{ info.tipo }}</td>
+        <td style="color:var(--text-bright);">{{ info.nombre }}</td>
+        <td><span class="badge" style="font-size:10px;{% if info.tipo == 'Activo' %}background:rgba(79,140,255,0.15);color:var(--accent);{% elif info.tipo == 'Pasivo' %}background:rgba(231,76,60,0.15);color:var(--red);{% elif info.tipo == 'Capital' %}background:rgba(46,204,113,0.15);color:var(--green);{% elif info.tipo == 'Ingreso' %}background:rgba(155,89,182,0.15);color:#9b59b6;{% else %}background:rgba(243,156,18,0.15);color:#f39c12;{% endif %}">{{ info.tipo }}</span></td>
         <td style="text-align:right;font-family:monospace;">C$ {{ "%.2f"|format(info.saldo|default(0)) }}</td>
-        <td>
+        <td style="display:flex;gap:6px;">
+          <button class="btn btn-outline" style="padding:4px 10px;font-size:11px;text-decoration:none;"
+            onclick="abrirEditar('{{ cod }}', '{{ info.nombre|replace("'","\\'") }}', '{{ info.tipo }}')">✏️</button>
           <form method="POST" action="/catalogar/eliminar" onsubmit="return confirm('¿Eliminar la cuenta {{ cod }} — {{ info.nombre }}?\n\nSolo se eliminará si no tiene movimientos.')">
             <input type="hidden" name="codigo" value="{{ cod }}">
-            <button type="submit" class="btn" style="padding:4px 10px;font-size:11px;background:rgba(231,76,60,0.12);color:var(--red);border:1px solid rgba(231,76,60,0.25);">Eliminar</button>
+            <button type="submit" class="btn" style="padding:4px 10px;font-size:11px;background:rgba(231,76,60,0.12);color:var(--red);border:1px solid rgba(231,76,60,0.25);">🗑️</button>
           </form>
         </td>
       </tr>
@@ -116,4 +106,53 @@
     </tbody>
   </table>
 </div>
+
+<!-- MODAL EDITAR -->
+<div class="modal-overlay" id="modalEditar">
+  <div class="modal-box" style="max-width:400px;text-align:left;">
+    <h3>✏️ Editar Cuenta</h3>
+    <form method="POST" action="/catalogar/editar">
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>Código</label>
+        <input type="text" name="codigo" id="editCodigo" readonly
+          style="background:var(--bg2);color:var(--text-dim);cursor:not-allowed;">
+      </div>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>Nombre</label>
+        <input type="text" name="nombre" id="editNombre" required>
+      </div>
+      <div class="form-group" style="margin-bottom:16px;">
+        <label>Tipo</label>
+        <select name="tipo" id="editTipo">
+          <option value="Activo">Activo</option>
+          <option value="Pasivo">Pasivo</option>
+          <option value="Capital">Capital</option>
+          <option value="Ingreso">Ingreso</option>
+          <option value="Gasto">Gasto</option>
+        </select>
+      </div>
+      <div class="modal-btns">
+        <button type="button" class="btn btn-outline" onclick="cerrarEditar()">Cancelar</button>
+        <button type="submit" class="btn btn-primary">💾 Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function abrirEditar(codigo, nombre, tipo) {
+  document.getElementById('editCodigo').value = codigo;
+  document.getElementById('editNombre').value = nombre;
+  document.getElementById('editTipo').value = tipo;
+  document.getElementById('modalEditar').classList.add('show');
+}
+function cerrarEditar() {
+  document.getElementById('modalEditar').classList.remove('show');
+}
+document.getElementById('modalEditar').addEventListener('click', function(e) {
+  if (e.target === this) cerrarEditar();
+});
+</script>
 {% endblock %}
