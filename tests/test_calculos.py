@@ -84,7 +84,7 @@ def test_validar_cierre_posible_empty(data):
 def test_obtener_cuenta_capital_cierre(data):
     result = obtener_cuenta_capital_cierre(data)
     assert result is not None
-    assert result == "3001"  # Capital cuenta por defecto
+    assert result == "3.3.02"  # Capital cuenta por defecto
 
 
 def test_calcular_total_comercializacion_empty(data):

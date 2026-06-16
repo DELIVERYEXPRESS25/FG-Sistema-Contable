@@ -227,7 +227,12 @@ def calcular_balance_general(data):
         debe = mayor[codigo]["debe"] if codigo in mayor else 0
         haber = mayor[codigo]["haber"] if codigo in mayor else 0
         ts = tipo_saldo(info["tipo"])
-        return (debe - haber) if ts == "Debe" else (haber - debe)
+        saldo = (debe - haber) if ts == "Debe" else (haber - debe)
+        if codigo == "3.3.01":
+            saldo += max(utilidad, 0)
+        elif codigo == "3.3.02":
+            saldo += max(-utilidad, 0)
+        return saldo
 
     activos = _construir_lista_jerarquica(cuentas, mayor, "Activo", _saldo)
     pasivos = _construir_lista_jerarquica(cuentas, mayor, "Pasivo", _saldo)
@@ -236,8 +241,6 @@ def calcular_balance_general(data):
     total_activo = sum(item["saldo"] for item in activos if item["tipo"] == "leaf")
     total_pasivo = sum(item["saldo"] for item in pasivos if item["tipo"] == "leaf")
     total_capital = sum(item["saldo"] for item in capital_items if item["tipo"] == "leaf")
-    total_capital += utilidad
-    capital_items.append({"tipo": "leaf", "nombre": "Utilidad del Periodo", "saldo": utilidad, "nivel": 1})
 
     return activos, total_activo, pasivos, total_pasivo, capital_items, total_capital
 
