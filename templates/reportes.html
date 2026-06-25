@@ -5,7 +5,7 @@
 <div class="page-header">
   <div>
     <h2>📤 Centro de Reportes</h2>
-    <div class="subtitle">Exporta los estados financieros en Excel o PDF — con o sin filtro por período</div>
+    <div class="subtitle">Control total sobre tus reportes — Selecciona, filtra y exporta</div>
   </div>
 </div>
 
@@ -33,110 +33,189 @@
   </div>
 </div>
 
-<!-- FILTRO DE PERÍODO -->
+<!-- ═══════════════════════════════════════════════════════
+     CONTROL DE PERÍODO
+     ═══════════════════════════════════════════════════════ -->
 <div class="card" style="margin-bottom:20px;">
-  <div class="card-title"><span class="icon">📅</span> Filtrar por período</div>
+  <div class="card-title"><span class="icon">📅</span> Período del Reporte</div>
+  
+  <!-- Presets rápidos -->
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+    <button class="btn btn-outline btn-sm" onclick="setPeriodo('hoy')">Hoy</button>
+    <button class="btn btn-outline btn-sm" onclick="setPeriodo('semana')">Esta Semana</button>
+    <button class="btn btn-outline btn-sm" onclick="setPeriodo('mes')">Este Mes</button>
+    <button class="btn btn-outline btn-sm" onclick="setPeriodo('trimestre')">Trimestre</button>
+    <button class="btn btn-outline btn-sm" onclick="setPeriodo('anio')">Año</button>
+    <button class="btn btn-outline btn-sm" onclick="setPeriodo('todo')">Todo</button>
+    <button class="btn btn-outline btn-sm" onclick="limpiarFiltro()" style="margin-left:auto;">✕ Limpiar</button>
+  </div>
+  
+  <!-- Rango personalizado -->
   <div class="form-row" style="align-items:end;">
     <div class="form-group" style="max-width:200px;">
       <label>Desde</label>
-      <input type="date" id="filtroDesde">
+      <input type="date" id="filtroDesde" onchange="actualizarPreview()">
     </div>
     <div class="form-group" style="max-width:200px;">
       <label>Hasta</label>
-      <input type="date" id="filtroHasta">
+      <input type="date" id="filtroHasta" onchange="actualizarPreview()">
     </div>
-    <button class="btn btn-outline btn-sm" onclick="limpiarFiltro()" style="align-self:flex-end;">✕ Limpiar</button>
+    <div id="periodoSeleccionado" style="font-size:12px;color:var(--text-dim);margin-left:12px;">
+      Sin filtro — mostrará todos los datos
+    </div>
   </div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════
-     ⚡ NAVEGACIÓN RÁPIDA
+     SELECCIÓN DE HOJAS
      ═══════════════════════════════════════════════════════ -->
-<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px;font-size:13px;">
-  <a href="#excel" class="btn btn-outline btn-sm" style="text-decoration:none;">📗 Excel</a>
-  <a href="#pdf" class="btn btn-outline btn-sm" style="text-decoration:none;">📄 PDF</a>
-  <a href="#antiguedad" class="btn btn-outline btn-sm" style="text-decoration:none;">⏳ Antigüedad</a>
-  <a href="#fiscales" class="btn btn-outline btn-sm" style="text-decoration:none;">🏛️ Fiscales</a>
-  <a href="#auditoria" class="btn btn-outline btn-sm" style="text-decoration:none;">📜 Auditoría</a>
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-title"><span class="icon">📋</span> Seleccionar Hojas para Excel</div>
+  <p style="color:var(--text-dim);font-size:12px;margin-bottom:12px;">Marca las hojas que querés incluir en tu exportación:</p>
+  
+  <div class="grid-2" style="gap:12px;">
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--card-border);border-radius:8px;cursor:pointer;" onclick="toggleCheck('chk_diario')">
+      <input type="checkbox" id="chk_diario" checked onchange="actualizarSeleccion()">
+      <span style="font-size:16px;">🧾</span>
+      <div>
+        <div style="font-weight:600;font-size:13px;">Libro Diario</div>
+        <div style="font-size:11px;color:var(--text-dim);">{{ diario|length }} asientos</div>
+      </div>
+    </div>
+    
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--card-border);border-radius:8px;cursor:pointer;" onclick="toggleCheck('chk_mayor')">
+      <input type="checkbox" id="chk_mayor" checked onchange="actualizarSeleccion()">
+      <span style="font-size:16px;">📗</span>
+      <div>
+        <div style="font-weight:600;font-size:13px;">Libro Mayor</div>
+        <div style="font-size:11px;color:var(--text-dim);">{{ cuentas|length }} cuentas</div>
+      </div>
+    </div>
+    
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--card-border);border-radius:8px;cursor:pointer;" onclick="toggleCheck('chk_balanza')">
+      <input type="checkbox" id="chk_balanza" checked onchange="actualizarSeleccion()">
+      <span style="font-size:16px;">⚖️</span>
+      <div>
+        <div style="font-weight:600;font-size:13px;">Balanza de Comprobación</div>
+        <div style="font-size:11px;color:var(--text-dim);">Movimientos y saldos</div>
+      </div>
+    </div>
+    
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--card-border);border-radius:8px;cursor:pointer;" onclick="toggleCheck('chk_er')">
+      <input type="checkbox" id="chk_er" checked onchange="actualizarSeleccion()">
+      <span style="font-size:16px;">📊</span>
+      <div>
+        <div style="font-weight:600;font-size:13px;">Estado de Resultados</div>
+        <div style="font-size:11px;color:var(--text-dim);">Utilidad C$ {{ "%.2f"|format(utilidad) }}</div>
+      </div>
+    </div>
+    
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--card-border);border-radius:8px;cursor:pointer;" onclick="toggleCheck('chk_bg')">
+      <input type="checkbox" id="chk_bg" checked onchange="actualizarSeleccion()">
+      <span style="font-size:16px;">🏦</span>
+      <div>
+        <div style="font-weight:600;font-size:13px;">Balance General</div>
+        <div style="font-size:11px;color:var(--text-dim);">A = P + C</div>
+      </div>
+    </div>
+    
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--card-border);border-radius:8px;cursor:pointer;" onclick="toggleCheck('chk_pos')">
+      <input type="checkbox" id="chk_pos" checked onchange="actualizarSeleccion()">
+      <span style="font-size:16px;">🛒</span>
+      <div>
+        <div style="font-weight:600;font-size:13px;">Ventas POS</div>
+        <div style="font-size:11px;color:var(--text-dim);">{{ pos_historial|length }} ventas</div>
+      </div>
+    </div>
+    
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--card-border);border-radius:8px;cursor:pointer;" onclick="toggleCheck('chk_kardex')">
+      <input type="checkbox" id="chk_kardex" checked onchange="actualizarSeleccion()">
+      <span style="font-size:16px;">📦</span>
+      <div>
+        <div style="font-weight:600;font-size:13px;">Kardex PEPS</div>
+        <div style="font-size:11px;color:var(--text-dim);">{{ kardex|length }} productos</div>
+      </div>
+    </div>
+    
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid var(--card-border);border-radius:8px;cursor:pointer;" onclick="toggleCheck('chk_cobros')">
+      <input type="checkbox" id="chk_cobros" checked onchange="actualizarSeleccion()">
+      <span style="font-size:16px;">⏳</span>
+      <div>
+        <div style="font-weight:600;font-size:13px;">Antigüedad Cobros</div>
+        <div style="font-size:11px;color:var(--text-dim);">Cuentas por cobrar</div>
+      </div>
+    </div>
+  </div>
+  
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;padding-top:12px;border-top:1px solid var(--card-border);">
+    <div>
+      <span style="font-size:12px;color:var(--text-dim);">Hojas seleccionadas: </span>
+      <span id="contadorHojas" style="font-weight:700;color:var(--accent);">8</span>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-outline btn-sm" onclick="seleccionarTodas()">Todas</button>
+      <button class="btn btn-outline btn-sm" onclick="seleccionarNinguna()">Ninguna</button>
+    </div>
+  </div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════
-     SECCIÓN EXCEL
+     FILTRO POR CUENTAS
      ═══════════════════════════════════════════════════════ -->
-<h3 id="excel" style="margin:24px 0 12px;display:flex;align-items:center;gap:8px;">
-  <span style="font-size:20px;">📗</span> Excel
-  <span style="font-size:11px;color:var(--text-dim);font-weight:400;"> — Descargar como .xlsx</span>
-</h3>
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-title"><span class="icon">🔍</span> Filtro por Cuentas (Opcional)</div>
+  <p style="color:var(--text-dim);font-size:12px;margin-bottom:12px;">Filtra el reporte por tipo de cuenta o cuentas específicas:</p>
+  
+  <div style="display:flex;gap:12px;flex-wrap:wrap;">
+    <div class="form-group" style="flex:1;min-width:200px;">
+      <label>Tipo de Cuenta</label>
+      <select id="filtroTipoCuenta" onchange="actualizarPreview()">
+        <option value="">Todos los tipos</option>
+        <option value="Activo">📦 Activo</option>
+        <option value="Pasivo">💳 Pasivo</option>
+        <option value="Capital">🏛️ Capital</option>
+        <option value="Ingreso">💚 Ingreso</option>
+        <option value="Gasto">❤️ Gasto</option>
+      </select>
+    </div>
+    <div class="form-group" style="flex:1;min-width:200px;">
+      <label>Cuenta Específica</label>
+      <select id="filtroCuentaEspecifica" onchange="actualizarPreview()">
+        <option value="">Todas las cuentas</option>
+        {% for cod in cuentas|sort %}
+        <option value="{{ cod }}">{{ cod }} — {{ cuentas[cod].nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+</div>
 
-<div class="card" style="border-color:rgba(79,140,255,0.35);background:linear-gradient(135deg,rgba(79,140,255,0.06),rgba(124,92,252,0.04));margin-bottom:8px;">
+<!-- ═══════════════════════════════════════════════════════
+     VISTA PREVIA
+     ═══════════════════════════════════════════════════════ -->
+<div class="card" style="margin-bottom:20px;">
+  <div class="card-title"><span class="icon">👁️</span> Vista Previa</div>
+  <div id="vistaPrevia">
+    <div style="text-align:center;padding:20px;color:var(--text-dim);font-size:13px;">
+      Selecciona el período y las hojas para ver un resumen antes de exportar
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     BOTÓN EXPORTAR
+     ═══════════════════════════════════════════════════════ -->
+<div class="card" style="border-color:rgba(79,140,255,0.35);background:linear-gradient(135deg,rgba(79,140,255,0.06),rgba(124,92,252,0.04));margin-bottom:20px;">
   <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
     <div>
-      <div class="card-title" style="margin-bottom:4px;"><span class="icon">📦</span> Exportar Todo en Excel</div>
+      <div class="card-title" style="margin-bottom:4px;"><span class="icon">📥</span> Exportar Excel</div>
       <p style="color:var(--text-dim);font-size:12px;margin:0;">
-        Genera un Excel con todas las hojas: Diario, Mayor, Balanza, Estado Resultados, Balance General, Kardex, Antigüedad Cobros, IVA, DGI, Alcaldía.
+        <span id="resumenExportacion">Genera un Excel con las hojas seleccionadas</span>
       </p>
     </div>
-    <button class="btn btn-primary" style="padding:12px 28px;font-size:14px;" onclick="exportar('todos')">📥 Exportar Completo</button>
-  </div>
-</div>
-
-<div class="grid-2" style="margin-top:12px;">
-  <div class="card" style="border-color:rgba(79,140,255,0.2);">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
-      <div>
-        <div class="card-title" style="margin-bottom:6px;"><span class="icon">🧾</span> Libro Diario</div>
-        <p style="color:var(--text-dim);font-size:12px;margin:0;">{{ diario|length }} asientos. Registro cronológico completo.</p>
-      </div>
-      <button class="btn btn-outline btn-sm" onclick="exportar('diario')">📥 Excel</button>
-    </div>
-  </div>
-  <div class="card" style="border-color:rgba(124,92,252,0.2);">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
-      <div>
-        <div class="card-title" style="margin-bottom:6px;"><span class="icon">📗</span> Libro Mayor</div>
-        <p style="color:var(--text-dim);font-size:12px;margin:0;">{{ cuentas|length }} cuentas. Debe, haber y saldo consolidado.</p>
-      </div>
-      <button class="btn btn-outline btn-sm" onclick="exportar('mayor')">📥 Excel</button>
-    </div>
-  </div>
-  <div class="card" style="border-color:rgba(243,156,18,0.2);">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
-      <div>
-        <div class="card-title" style="margin-bottom:6px;"><span class="icon">⚖️</span> Balanza de Comprobación</div>
-        <p style="color:var(--text-dim);font-size:12px;margin:0;">Débitos, créditos y saldos por cuenta.</p>
-      </div>
-      <button class="btn btn-outline btn-sm" onclick="exportar('balanza')">📥 Excel</button>
-    </div>
-  </div>
-  <div class="card" style="border-color:rgba(46,204,113,0.2);">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
-      <div>
-        <div class="card-title" style="margin-bottom:6px;"><span class="icon">📊</span> Estado de Resultados</div>
-        <p style="color:var(--text-dim);font-size:12px;margin:0;">Ingresos C$ {{ "%.2f"|format(total_ingresos) }} — Gastos C$ {{ "%.2f"|format(total_gastos) }} — Utilidad C$ {{ "%.2f"|format(utilidad) }}.</p>
-      </div>
-      <button class="btn btn-outline btn-sm" onclick="exportar('estado_resultados')">📥 Excel</button>
-    </div>
-  </div>
-  <div class="card" style="border-color:rgba(231,76,60,0.2);">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
-      <div>
-        <div class="card-title" style="margin-bottom:6px;"><span class="icon">🏦</span> Balance General</div>
-        <p style="color:var(--text-dim);font-size:12px;margin:0;">Activos C$ {{ "%.2f"|format(total_activo) }} = Pasivos C$ {{ "%.2f"|format(total_pasivo) }} + Capital C$ {{ "%.2f"|format(total_capital) }}.</p>
-      </div>
-      <button class="btn btn-outline btn-sm" onclick="exportar('balance_general')">📥 Excel</button>
-    </div>
-  </div>
-  <div class="card" style="border-color:rgba(155,89,182,0.2);">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
-      <div>
-        <div class="card-title" style="margin-bottom:6px;"><span class="icon">📦</span> Kardex PEPS</div>
-        <p style="color:var(--text-dim);font-size:12px;margin:0;">{{ kardex|length }} productos. Método PEPS con lotes.</p>
-      </div>
-      <div style="display:flex;gap:6px;">
-        <button class="btn btn-outline btn-sm" onclick="exportar('kardex')">📥 Excel</button>
-        <a href="/kardex" class="btn btn-primary btn-sm" style="text-decoration:none;">📊 Ver Kardex</a>
-      </div>
-    </div>
+    <button class="btn btn-primary" style="padding:12px 28px;font-size:14px;" onclick="exportarSeleccionadas()">
+      📥 Exportar Excel
+    </button>
   </div>
 </div>
 
@@ -185,48 +264,7 @@
         Cuentas por cobrar agrupadas por rango de días vencido: 0-30, 31-60, 61-90, 91+. Incluye detalle individual.
       </p>
     </div>
-    <div style="display:flex;gap:6px;">
-      <button class="btn btn-outline btn-sm" onclick="exportar('antiguedad_cobros')">📥 Excel</button>
-      <a href="#" class="btn btn-outline btn-sm" style="text-decoration:none;" onclick="return descargarPDF('antiguedad-cobros')">📄 PDF</a>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════
-     SECCIÓN FISCALES
-     ═══════════════════════════════════════════════════════ -->
-<h3 id="fiscales" style="margin:32px 0 12px;display:flex;align-items:center;gap:8px;">
-  <span style="font-size:20px;">🏛️</span> Fiscales
-  <span style="font-size:11px;color:var(--text-dim);font-weight:400;"> — IVA, DGI, Alcaldía</span>
-</h3>
-
-<div class="grid-3" style="margin-top:12px;">
-  <div class="card" style="border-color:rgba(243,156,18,0.2);">
-    <div class="accent-bar" style="background:linear-gradient(90deg,var(--yellow),var(--accent));"></div>
-    <div class="label" style="font-size:13px;font-weight:600;">💰 IVA (15%)</div>
-    <p style="color:var(--text-dim);font-size:11px;">Débito − Crédito fiscal del período.</p>
-    <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
-      <a href="/fiscales/iva" class="btn btn-outline btn-sm" style="text-decoration:none;">📄 Ver</a>
-      <button class="btn btn-outline btn-sm" onclick="exportarFiscal('fiscal_iva')">📥 Excel</button>
-    </div>
-  </div>
-  <div class="card" style="border-color:rgba(231,76,60,0.2);">
-    <div class="accent-bar" style="background:linear-gradient(90deg,var(--red),var(--accent2));"></div>
-    <div class="label" style="font-size:13px;font-weight:600;">🏛️ DGI</div>
-    <p style="color:var(--text-dim);font-size:11px;">Ingresos, gastos, utilidad e IR (30%).</p>
-    <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
-      <a href="/fiscales/dgi" class="btn btn-outline btn-sm" style="text-decoration:none;">📄 Ver</a>
-      <button class="btn btn-outline btn-sm" onclick="exportarFiscal('fiscal_dgi')">📥 Excel</button>
-    </div>
-  </div>
-  <div class="card" style="border-color:rgba(46,204,113,0.2);">
-    <div class="accent-bar" style="background:linear-gradient(90deg,var(--green),var(--accent));"></div>
-    <div class="label" style="font-size:13px;font-weight:600;">🏙️ Alcaldía (1%)</div>
-    <p style="color:var(--text-dim);font-size:11px;">Impuesto municipal sobre ingresos brutos.</p>
-    <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;">
-      <a href="/fiscales/alcaldia" class="btn btn-outline btn-sm" style="text-decoration:none;">📄 Ver</a>
-      <button class="btn btn-outline btn-sm" onclick="exportarFiscal('fiscal_alcaldia')">📥 Excel</button>
-    </div>
+    <a href="#" class="btn btn-outline btn-sm" style="text-decoration:none;" onclick="return descargarPDF('antiguedad-cobros')">📄 PDF</a>
   </div>
 </div>
 
@@ -288,19 +326,177 @@
 
 {% block scripts %}
 <script>
-function getPeriodo() {
-    const d = document.getElementById('filtroDesde').value;
-    const h = document.getElementById('filtroHasta').value;
-    return d && h ? `?desde=${d}&hasta=${h}` : '';
+// ── Estado ──
+const hojasDisponibles = ['diario', 'mayor', 'balanza', 'er', 'bg', 'pos', 'kardex', 'cobros'];
+let hojasSeleccionadas = new Set(hojasDisponibles);
+
+// ── Período rápido ──
+function setPeriodo(preset) {
+    const hoy = new Date();
+    let desde, hasta;
+    
+    switch(preset) {
+        case 'hoy':
+            desde = hasta = hoy.toISOString().slice(0, 10);
+            break;
+        case 'semana':
+            const primerDia = new Date(hoy);
+            primerDia.setDate(hoy.getDate() - hoy.getDay());
+            desde = primerDia.toISOString().slice(0, 10);
+            hasta = hoy.toISOString().slice(0, 10);
+            break;
+        case 'mes':
+            desde = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-01';
+            hasta = hoy.toISOString().slice(0, 10);
+            break;
+        case 'trimestre':
+            const mes = hoy.getMonth();
+            const trimestre = Math.floor(mes / 3);
+            desde = hoy.getFullYear() + '-' + String(trimestre * 3 + 1).padStart(2, '0') + '-01';
+            hasta = hoy.toISOString().slice(0, 10);
+            break;
+        case 'anio':
+            desde = hoy.getFullYear() + '-01-01';
+            hasta = hoy.toISOString().slice(0, 10);
+            break;
+        case 'todo':
+            desde = '';
+            hasta = '';
+            break;
+    }
+    
+    document.getElementById('filtroDesde').value = desde;
+    document.getElementById('filtroHasta').value = hasta;
+    actualizarPreview();
 }
 
-function descargarPDF(slug) {
-    const periodo = getPeriodo();
-    window.location.href = `/reportes/pdf/${slug}${periodo}`;
-    return false;
+function limpiarFiltro() {
+    document.getElementById('filtroDesde').value = '';
+    document.getElementById('filtroHasta').value = '';
+    actualizarPreview();
 }
 
-function exportar(tipo) {
+// ── Selección de hojas ──
+function toggleCheck(id) {
+    const chk = document.getElementById(id);
+    chk.checked = !chk.checked;
+    actualizarSeleccion();
+}
+
+function actualizarSeleccion() {
+    hojasSeleccionadas = new Set();
+    hojasDisponibles.forEach(h => {
+        const chk = document.getElementById('chk_' + h);
+        if (chk && chk.checked) hojasSeleccionadas.add(h);
+    });
+    document.getElementById('contadorHojas').textContent = hojasSeleccionadas.size;
+    actualizarPreview();
+}
+
+function seleccionarTodas() {
+    hojasDisponibles.forEach(h => {
+        const chk = document.getElementById('chk_' + h);
+        if (chk) chk.checked = true;
+    });
+    actualizarSeleccion();
+}
+
+function seleccionarNinguna() {
+    hojasDisponibles.forEach(h => {
+        const chk = document.getElementById('chk_' + h);
+        if (chk) chk.checked = false;
+    });
+    actualizarSeleccion();
+}
+
+// ── Preview ──
+function actualizarPreview() {
+    const desde = document.getElementById('filtroDesde').value;
+    const hasta = document.getElementById('filtroHasta').value;
+    const tipoCuenta = document.getElementById('filtroTipoCuenta').value;
+    const cuentaEsp = document.getElementById('filtroCuentaEspecifica').value;
+    
+    // Actualizar texto del período
+    const periodoEl = document.getElementById('periodoSeleccionado');
+    if (desde && hasta) {
+        periodoEl.innerHTML = `<span style="color:var(--accent);">✓ Período: ${desde} al ${hasta}</span>`;
+    } else {
+        periodoEl.innerHTML = `Sin filtro — mostrará todos los datos`;
+    }
+    
+    // Actualizar resumen de exportación
+    const resumenEl = document.getElementById('resumenExportacion');
+    const hojas = Array.from(hojasSeleccionadas);
+    const nombres = {
+        diario: 'Diario', mayor: 'Mayor', balanza: 'Balanza',
+        er: 'Estado Resultados', bg: 'Balance General',
+        pos: 'Ventas POS', kardex: 'Kardex', cobros: 'Cobros'
+    };
+    const textoHojas = hojas.map(h => nombres[h]).join(', ');
+    let texto = `${hojas.length} hoja(s): ${textoHojas}`;
+    if (desde && hasta) texto += ` — Período: ${desde} al ${hasta}`;
+    if (tipoCuenta) texto += ` — Tipo: ${tipoCuenta}`;
+    resumenEl.textContent = texto;
+    
+    // Vista previa
+    const previewEl = document.getElementById('vistaPrevia');
+    let html = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;">';
+    
+    if (hojasSeleccionadas.has('diario')) {
+        html += `<div style="padding:12px;border:1px solid var(--card-border);border-radius:8px;">
+            <div style="font-weight:600;font-size:13px;margin-bottom:4px;">🧾 Libro Diario</div>
+            <div style="font-size:12px;color:var(--text-dim);">${document.getElementById('diario_count')?.textContent || '{{ diario|length }}'} asientos</div>
+        </div>`;
+    }
+    if (hojasSeleccionadas.has('mayor')) {
+        html += `<div style="padding:12px;border:1px solid var(--card-border);border-radius:8px;">
+            <div style="font-weight:600;font-size:13px;margin-bottom:4px;">📗 Libro Mayor</div>
+            <div style="font-size:12px;color:var(--text-dim);">${document.getElementById('mayor_count')?.textContent || '{{ cuentas|length }}'} cuentas</div>
+        </div>`;
+    }
+    if (hojasSeleccionadas.has('balanza')) {
+        html += `<div style="padding:12px;border:1px solid var(--card-border);border-radius:8px;">
+            <div style="font-weight:600;font-size:13px;margin-bottom:4px;">⚖️ Balanza</div>
+            <div style="font-size:12px;color:var(--text-dim);">Debe = Haber</div>
+        </div>`;
+    }
+    if (hojasSeleccionadas.has('er')) {
+        html += `<div style="padding:12px;border:1px solid var(--card-border);border-radius:8px;">
+            <div style="font-weight:600;font-size:13px;margin-bottom:4px;">📊 Estado Resultados</div>
+            <div style="font-size:12px;color:var(--text-dim);">Utilidad: C$ {{ "%.2f"|format(utilidad) }}</div>
+        </div>`;
+    }
+    if (hojasSeleccionadas.has('bg')) {
+        html += `<div style="padding:12px;border:1px solid var(--card-border);border-radius:8px;">
+            <div style="font-weight:600;font-size:13px;margin-bottom:4px;">🏦 Balance General</div>
+            <div style="font-size:12px;color:var(--text-dim);">A = P + C</div>
+        </div>`;
+    }
+    if (hojasSeleccionadas.has('pos')) {
+        html += `<div style="padding:12px;border:1px solid var(--card-border);border-radius:8px;">
+            <div style="font-weight:600;font-size:13px;margin-bottom:4px;">🛒 Ventas POS</div>
+            <div style="font-size:12px;color:var(--text-dim);">${document.getElementById('pos_count')?.textContent || '{{ pos_historial|length }}'} ventas</div>
+        </div>`;
+    }
+    if (hojasSeleccionadas.has('kardex')) {
+        html += `<div style="padding:12px;border:1px solid var(--card-border);border-radius:8px;">
+            <div style="font-weight:600;font-size:13px;margin-bottom:4px;">📦 Kardex PEPS</div>
+            <div style="font-size:12px;color:var(--text-dim);">${document.getElementById('kardex_count')?.textContent || '{{ kardex|length }}'} productos</div>
+        </div>`;
+    }
+    if (hojasSeleccionadas.has('cobros')) {
+        html += `<div style="padding:12px;border:1px solid var(--card-border);border-radius:8px;">
+            <div style="font-weight:600;font-size:13px;margin-bottom:4px;">⏳ Cobros</div>
+            <div style="font-size:12px;color:var(--text-dim);">Antigüedad</div>
+        </div>`;
+    }
+    
+    html += '</div>';
+    previewEl.innerHTML = html;
+}
+
+// ── Exportar ──
+function exportarSeleccionadas() {
     const status = document.getElementById('exportStatus');
     const content = document.getElementById('statusContent');
 
@@ -315,17 +511,38 @@ function exportar(tipo) {
     form.action = '/reportes/exportar';
     form.style.display = 'none';
 
-    const input = document.createElement('input');
-    input.name = 'tipo';
-    input.value = tipo;
-    form.appendChild(input);
+    // Enviar todas las hojas seleccionadas
+    hojasSeleccionadas.forEach(h => {
+        const input = document.createElement('input');
+        input.type = 'hidden';
+        input.name = 'hojas';
+        input.value = h;
+        form.appendChild(input);
+    });
 
+    // Enviar filtro de cuentas
+    const tipoCuenta = document.getElementById('filtroTipoCuenta').value;
+    const cuentaEsp = document.getElementById('filtroCuentaEspecifica').value;
+    if (tipoCuenta) {
+        const inp = document.createElement('input');
+        inp.name = 'tipo_cuenta'; inp.value = tipoCuenta;
+        form.appendChild(inp);
+    }
+    if (cuentaEsp) {
+        const inp = document.createElement('input');
+        inp.name = 'cuenta_especifica'; inp.value = cuentaEsp;
+        form.appendChild(inp);
+    }
+
+    // Enviar fechas
     const d = document.getElementById('filtroDesde').value;
     const h = document.getElementById('filtroHasta').value;
-    if (d && h) {
+    if (d) {
         const inpD = document.createElement('input');
         inpD.name = 'desde'; inpD.value = d;
         form.appendChild(inpD);
+    }
+    if (h) {
         const inpH = document.createElement('input');
         inpH.name = 'hasta'; inpH.value = h;
         form.appendChild(inpH);
@@ -350,13 +567,16 @@ function exportar(tipo) {
     }, 1500);
 }
 
-function exportarFiscal(tipo) {
-    exportar(tipo);
+function descargarPDF(slug) {
+    const desde = document.getElementById('filtroDesde').value;
+    const hasta = document.getElementById('filtroHasta').value;
+    let url = `/reportes/pdf/${slug}`;
+    if (desde && hasta) url += `?desde=${desde}&hasta=${hasta}`;
+    window.location.href = url;
+    return false;
 }
 
-function limpiarFiltro() {
-    document.getElementById('filtroDesde').value = '';
-    document.getElementById('filtroHasta').value = '';
-}
+// ── Init ──
+document.addEventListener('DOMContentLoaded', actualizarPreview);
 </script>
 {% endblock %}

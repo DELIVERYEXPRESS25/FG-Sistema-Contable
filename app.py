@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify, g, session
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
-import json, os, signal, sys, secrets, time
+import json, os, signal, sys, secrets, time, copy
 from datetime import datetime, date
 from collections import defaultdict
 import kardex_peps
@@ -17,7 +17,8 @@ from services.calculos import (
     procesar_movimientos_periodo,
     calcular_movimientos_cierre,
     obtener_cuenta_capital_cierre,
-    validar_cierre_posible
+    validar_cierre_posible,
+    meses_disponibles
 )
 
 app = Flask(__name__)
@@ -414,7 +415,7 @@ def index():
         saldo = (d - h) if ts == "Debe" else (h - d)
         if info["tipo"] == "Activo":
             total_activo += saldo
-        else:
+        elif info["tipo"] == "Pasivo":
             total_pasivo += saldo
     return render_template(
         "index.html",
@@ -659,14 +660,61 @@ def mayor():
 def balanza():
     try:
         data = load_data()
-        balanza_data, td, th, tsd, tsh = calcular_balanza(data)
+        meses = meses_disponibles(data)
+        periodo = request.args.get("periodo", "")
+
+        def _calcular_balanza_tipo(d):
+            bal, td, th, tsd, tsh = calcular_balanza(d)
+            # Compute type-level subtotals
+            tipos_totales = {}
+            for row in bal:
+                if not row["es_header"] and not row["es_subtotal"] and row["tipo"]:
+                    t = row["tipo"]
+                    if t not in tipos_totales:
+                        tipos_totales[t] = {"debe": 0, "haber": 0, "saldo_debe": 0, "saldo_haber": 0}
+                    tipos_totales[t]["debe"] += row["debe"]
+                    tipos_totales[t]["haber"] += row["haber"]
+                    tipos_totales[t]["saldo_debe"] += row["saldo_debe"]
+                    tipos_totales[t]["saldo_haber"] += row["saldo_haber"]
+            return bal, td, th, tsd, tsh, tipos_totales
+
+        if periodo:
+            data_filtrada = copy.deepcopy(data)
+            data_filtrada["diario"] = [e for e in data["diario"] if e["fecha"][:7] == periodo]
+            data_filtrada["ajustes"] = [a for a in data.get("ajustes", []) if a["fecha"][:7] == periodo]
+            balanza_data, td, th, tsd, tsh, tipos_totales = _calcular_balanza_tipo(data_filtrada)
+
+            idx = meses.index(periodo) if periodo in meses else -1
+            periodo_anterior = meses[idx - 1] if idx > 0 else ""
+            if periodo_anterior:
+                data_ant = copy.deepcopy(data)
+                data_ant["diario"] = [e for e in data["diario"] if e["fecha"][:7] == periodo_anterior]
+                data_ant["ajustes"] = [a for a in data.get("ajustes", []) if a["fecha"][:7] == periodo_anterior]
+                balanza_ant, td_a, th_a, tsd_a, tsh_a, _ = _calcular_balanza_tipo(data_ant)
+            else:
+                balanza_ant = []
+                td_a = th_a = tsd_a = tsh_a = 0
+                periodo_anterior = ""
+        else:
+            balanza_data, td, th, tsd, tsh, tipos_totales = _calcular_balanza_tipo(data)
+            balanza_ant = []
+            td_a = th_a = tsd_a = tsh_a = 0
+            periodo_anterior = ""
+
         return render_template(
             "balanza.html",
             balanza=balanza_data,
+            balanza_anterior=balanza_ant,
             total_debe=td,
             total_haber=th,
             total_saldo_debe=tsd,
             total_saldo_haber=tsh,
+            total_debe_ant=td_a,
+            total_haber_ant=th_a,
+            meses=meses,
+            periodo_actual=periodo,
+            periodo_anterior=periodo_anterior,
+            tipos_totales=tipos_totales,
         )
     except Exception as e:
         import traceback
@@ -1129,11 +1177,9 @@ def auxiliar_diario():
             sumario_ctas[c]["haber"] += m["monto"]
         sumario_ctas[c]["movs"] += 1
 
-    page = request.args.get("page", 1, type=int)
-    movs_pag, page, total_pages, total = _paginar(movs_con_saldo, page)
     return render_template(
         "auxiliar_diario.html",
-        movimientos=movs_pag,
+        movimientos=movs_con_saldo,
         cuentas=cuentas,
         cuentas_con_mov=cuentas_con_mov,
         sumario_ctas=sumario_ctas,
@@ -1142,7 +1188,6 @@ def auxiliar_diario():
         total_haber=total_haber,
         total_asientos=len(data["diario"]) + len(data.get("ajustes", [])),
         total_movs=len(movs_con_saldo),
-        page=page, total_pages=total_pages,
     )
 
 
@@ -2665,8 +2710,57 @@ def exportar_reporte():
         from openpyxl.utils import get_column_letter
 
     data = load_data()
-    tipo_reporte = request.form.get("tipo", "todos")
+    desde = request.form.get("desde", "") or None
+    hasta = request.form.get("hasta", "") or None
+    tipo_cuenta = request.form.get("tipo_cuenta", "") or None
+    cuenta_especifica = request.form.get("cuenta_especifica", "") or None
     from datetime import date, datetime
+
+    # Soporte multi-hojas (nuevo) y legacy tipo=single
+    hojas_raw = request.form.getlist("hojas")
+    if hojas_raw:
+        hojas_seleccionadas = set(hojas_raw)
+    else:
+        tipo_reporte = request.form.get("tipo", "todos")
+        if tipo_reporte == "todos":
+            hojas_seleccionadas = {"diario", "mayor", "balanza", "er", "bg", "pos", "kardex", "cobros"}
+        else:
+            # Mapear legacy tipo -> hoja key
+            mapa_legacy = {
+                "diario": "diario", "mayor": "mayor", "balanza": "balanza",
+                "estado_resultados": "er", "balance_general": "bg",
+                "kardex": "kardex", "antiguedad_cobros": "cobros",
+            }
+            hojas_seleccionadas = {mapa_legacy.get(tipo_reporte, tipo_reporte)}
+
+    def _filtrar_cuentas(movimientos):
+        """Filtra movimientos por tipo de cuenta o cuenta específica."""
+        if not tipo_cuenta and not cuenta_especifica:
+            return movimientos
+        filtered = []
+        for mov in movimientos:
+            cod = mov.get("cuenta", "")
+            info = cuentas.get(cod, {})
+            if cuenta_especifica and cod != cuenta_especifica:
+                continue
+            if tipo_cuenta and info.get("tipo", "") != tipo_cuenta:
+                continue
+            filtered.append(mov)
+        return filtered
+
+    # Filtrar data por período si se proporciona
+    if desde or hasta:
+        import copy
+        data = copy.deepcopy(data)
+        if desde and hasta:
+            data["diario"] = [e for e in data.get("diario", []) if desde <= e.get("fecha", "") <= hasta]
+            data["ajustes"] = [a for a in data.get("ajustes", []) if desde <= a.get("fecha", "") <= hasta]
+        elif desde:
+            data["diario"] = [e for e in data.get("diario", []) if desde <= e.get("fecha", "")]
+            data["ajustes"] = [a for a in data.get("ajustes", []) if desde <= a.get("fecha", "")]
+        elif hasta:
+            data["diario"] = [e for e in data.get("diario", []) if e.get("fecha", "") <= hasta]
+            data["ajustes"] = [a for a in data.get("ajustes", []) if a.get("fecha", "") <= hasta]
 
     # ── Estilos ──
     header_font = Font(name="Calibri", size=11, bold=True, color="FFFFFF")
@@ -2733,10 +2827,11 @@ def exportar_reporte():
     cuentas = data["cuentas"]
 
     # ══════════════ HOJA 1: LIBRO DIARIO ══════════════
-    if tipo_reporte in ["todos", "diario"]:
+    if "diario" in hojas_seleccionadas:
+        periodo_str = f"Período: {desde} al {hasta}" if desde and hasta else "Acumulado"
         ws = wb.create_sheet("Libro Diario")
         ws.sheet_properties.tabColor = "4F8CFF"
-        start = add_title(ws, "Libro Diario", "Registro cronológico de asientos")
+        start = add_title(ws, "Libro Diario", f"Registro cronológico de asientos — {periodo_str}")
         headers = [
             "#",
             "Fecha",
@@ -2761,12 +2856,17 @@ def exportar_reporte():
 
         r = start + 1
         total_debe = total_haber = 0
-        for entry in data["diario"]:
-            for idx, mov in enumerate(entry["movimientos"]):
+        all_entries = list(data["diario"]) + list(data.get("ajustes", []))
+        all_entries.sort(key=lambda x: x.get("fecha", ""))
+        for entry in all_entries:
+            movs_filtrados = _filtrar_cuentas(entry["movimientos"])
+            if not movs_filtrados:
+                continue
+            for idx, mov in enumerate(movs_filtrados):
                 ws.cell(row=r, column=1, value=entry["id"] if idx == 0 else "")
                 ws.cell(row=r, column=2, value=entry["fecha"] if idx == 0 else "")
                 ws.cell(row=r, column=3, value=entry["descripcion"] if idx == 0 else "")
-                ws.cell(row=r, column=4, value=entry.get("ref", "") if idx == 0 else "")
+                ws.cell(row=r, column=4, value=entry.get("ref", "AJ") if idx == 0 else "")
                 ws.cell(row=r, column=5, value=mov["cuenta"])
                 ws.cell(
                     row=r,
@@ -2792,10 +2892,11 @@ def exportar_reporte():
         style_total_row(ws, r, len(headers))
 
     # ══════════════ HOJA 2: LIBRO MAYOR ══════════════
-    if tipo_reporte in ["todos", "mayor"]:
+    if "mayor" in hojas_seleccionadas:
+        periodo_str = f"Período: {desde} al {hasta}" if desde and hasta else "Acumulado"
         ws = wb.create_sheet("Libro Mayor")
         ws.sheet_properties.tabColor = "7C5CFC"
-        start = add_title(ws, "Libro Mayor", "Cuentas T — Movimientos por cuenta")
+        start = add_title(ws, "Libro Mayor", f"Cuentas T — Movimientos por cuenta — {periodo_str}")
         headers = ["Cuenta", "Nombre", "Tipo", "Debe C$", "Haber C$", "Saldo C$"]
         for i, h in enumerate(headers, 1):
             ws.cell(row=start, column=i, value=h)
@@ -2810,6 +2911,10 @@ def exportar_reporte():
         r = start + 1
         for codigo in sorted(cuentas.keys()):
             info = cuentas[codigo]
+            if cuenta_especifica and codigo != cuenta_especifica:
+                continue
+            if tipo_cuenta and info.get("tipo", "") != tipo_cuenta:
+                continue
             debe = mayor[codigo]["debe"] if codigo in mayor else 0
             haber = mayor[codigo]["haber"] if codigo in mayor else 0
             ts = tipo_saldo(info["tipo"])
@@ -2825,11 +2930,12 @@ def exportar_reporte():
             r += 1
 
     # ══════════════ HOJA 3: BALANZA DE COMPROBACIÓN ══════════════
-    if tipo_reporte in ["todos", "balanza"]:
+    if "balanza" in hojas_seleccionadas:
+        periodo_str = f"Período: {desde} al {hasta}" if desde and hasta else "Acumulado"
         ws = wb.create_sheet("Balanza")
         ws.sheet_properties.tabColor = "F39C12"
         start = add_title(
-            ws, "Balanza de Comprobación", "Verificación de débitos y créditos"
+            ws, "Balanza de Comprobación", f"Verificación de débitos y créditos — {periodo_str}"
         )
         headers = [
             "Código",
@@ -2849,6 +2955,16 @@ def exportar_reporte():
         balanza_data, td, th, tsd, tsh = calcular_balanza(data)
         r = start + 1
         for item in balanza_data:
+            if item.get("es_header"):
+                ws.cell(row=r, column=1, value=item["codigo"])
+                ws.cell(row=r, column=2, value=item["nombre"]).font = Font(
+                    name="Calibri", size=10, bold=True, color="1A1D2E"
+                )
+                style_data_row(ws, r, 7)
+                r += 1
+                continue
+            if item.get("es_subtotal"):
+                continue
             ws.cell(row=r, column=1, value=item["codigo"])
             ws.cell(row=r, column=2, value=item["nombre"])
             ws.cell(row=r, column=3, value=item["tipo"])
@@ -2869,11 +2985,12 @@ def exportar_reporte():
         style_total_row(ws, r, 7)
 
     # ══════════════ HOJA 4: ESTADO DE RESULTADOS ══════════════
-    if tipo_reporte in ["todos", "estado_resultados"]:
+    if "er" in hojas_seleccionadas:
+        periodo_str = f"Período: {desde} al {hasta}" if desde and hasta else "Acumulado"
         ws = wb.create_sheet("Estado de Resultados")
         ws.sheet_properties.tabColor = "2ECC71"
         start = add_title(
-            ws, "Estado de Resultados", "Ingresos, Gastos y Utilidad Neta"
+            ws, "Estado de Resultados", f"Ingresos, Gastos y Utilidad Neta — {periodo_str}"
         )
         di, ti, dg, tg, util = calcular_estado_resultados(data)
 
@@ -2883,10 +3000,12 @@ def exportar_reporte():
         )
         r += 1
         for item in di:
+            if item.get("tipo") in ("header", "subtotal"):
+                continue
             ws.cell(row=r, column=1, value=item["nombre"]).font = Font(
                 name="Calibri", size=10, color="333333"
             )
-            ws.cell(row=r, column=2, value=item["monto"]).number_format = money_fmt
+            ws.cell(row=r, column=2, value=item["saldo"]).number_format = money_fmt
             ws.cell(row=r, column=2).font = green_font
             r += 1
         ws.cell(row=r, column=1, value="Total Ingresos").font = total_font
@@ -2902,10 +3021,12 @@ def exportar_reporte():
         )
         r += 1
         for item in dg:
+            if item.get("tipo") in ("header", "subtotal"):
+                continue
             ws.cell(row=r, column=1, value=item["nombre"]).font = Font(
                 name="Calibri", size=10, color="333333"
             )
-            ws.cell(row=r, column=2, value=item["monto"]).number_format = money_fmt
+            ws.cell(row=r, column=2, value=item["saldo"]).number_format = money_fmt
             ws.cell(row=r, column=2).font = red_font
             r += 1
         ws.cell(row=r, column=1, value="Total Gastos").font = total_font
@@ -2932,10 +3053,11 @@ def exportar_reporte():
         ws.column_dimensions["B"].width = 20
 
     # ══════════════ HOJA 5: BALANCE GENERAL ══════════════
-    if tipo_reporte in ["todos", "balance_general"]:
+    if "bg" in hojas_seleccionadas:
+        periodo_str = f"Período: {desde} al {hasta}" if desde and hasta else "Acumulado"
         ws = wb.create_sheet("Balance General")
         ws.sheet_properties.tabColor = "E74C3C"
-        start = add_title(ws, "Balance General", "Activos = Pasivos + Capital")
+        start = add_title(ws, "Balance General", f"Activos = Pasivos + Capital — {periodo_str}")
         activos, ta, pasivos, tp, capital_items, tc = calcular_balance_general(data)
 
         r = start
@@ -2944,6 +3066,18 @@ def exportar_reporte():
         )
         r += 1
         for item in activos:
+            if item.get("tipo") == "header":
+                ws.cell(row=r, column=1, value=item["nombre"]).font = Font(
+                    name="Calibri", size=10, bold=True, color="4F8CFF"
+                )
+                r += 1
+                continue
+            if item.get("tipo") == "subtotal":
+                ws.cell(row=r, column=1, value="  Total " + item["nombre"]).font = total_font
+                ws.cell(row=r, column=2, value=item["saldo"]).number_format = money_fmt
+                style_data_row(ws, r, 2)
+                r += 1
+                continue
             ws.cell(row=r, column=1, value=item["nombre"]).font = Font(
                 name="Calibri", size=10, color="333333"
             )
@@ -2965,6 +3099,18 @@ def exportar_reporte():
         )
         r += 1
         for item in pasivos:
+            if item.get("tipo") == "header":
+                ws.cell(row=r, column=1, value=item["nombre"]).font = Font(
+                    name="Calibri", size=10, bold=True, color="E74C3C"
+                )
+                r += 1
+                continue
+            if item.get("tipo") == "subtotal":
+                ws.cell(row=r, column=1, value="  Total " + item["nombre"]).font = total_font
+                ws.cell(row=r, column=2, value=item["saldo"]).number_format = money_fmt
+                style_data_row(ws, r, 2)
+                r += 1
+                continue
             ws.cell(row=r, column=1, value=item["nombre"]).font = Font(
                 name="Calibri", size=10, color="333333"
             )
@@ -2984,6 +3130,18 @@ def exportar_reporte():
         )
         r += 1
         for item in capital_items:
+            if item.get("tipo") == "header":
+                ws.cell(row=r, column=1, value=item["nombre"]).font = Font(
+                    name="Calibri", size=10, bold=True, color="2ECC71"
+                )
+                r += 1
+                continue
+            if item.get("tipo") == "subtotal":
+                ws.cell(row=r, column=1, value="  Total " + item["nombre"]).font = total_font
+                ws.cell(row=r, column=2, value=item["saldo"]).number_format = money_fmt
+                style_data_row(ws, r, 2)
+                r += 1
+                continue
             ws.cell(row=r, column=1, value=item["nombre"]).font = Font(
                 name="Calibri", size=10, color="333333"
             )
@@ -3012,13 +3170,20 @@ def exportar_reporte():
         ws.column_dimensions["B"].width = 20
 
     # ══════════════ HOJA 6: VENTAS POS ══════════════
-    if tipo_reporte in ["todos"]:
+    if "pos" in hojas_seleccionadas:
         pos_historial = data.get("pos_historial", [])
+        if desde and hasta:
+            pos_historial = [v for v in pos_historial if desde <= v.get("fecha", "") <= hasta]
+        elif desde:
+            pos_historial = [v for v in pos_historial if desde <= v.get("fecha", "")]
+        elif hasta:
+            pos_historial = [v for v in pos_historial if v.get("fecha", "") <= hasta]
         if pos_historial:
+            periodo_str = f"Período: {desde} al {hasta}" if desde and hasta else "Acumulado"
             ws = wb.create_sheet("Ventas POS")
             ws.sheet_properties.tabColor = "F39C12"
             start = add_title(
-                ws, "Ventas POS", "Historial de ventas registradas en el punto de venta"
+                ws, "Ventas POS", f"Historial de ventas — {periodo_str}"
             )
             headers = [
                 "Ref",
@@ -3076,10 +3241,11 @@ def exportar_reporte():
 
     # ══════════════ HOJA 7: KARDEX PEPS ══════════════
     import kardex_peps
-    if tipo_reporte in ["todos", "kardex"] and "kardex" in data and data["kardex"]:
+    if "kardex" in hojas_seleccionadas and "kardex" in data and data["kardex"]:
+        periodo_str = f"Período: {desde} al {hasta}" if desde and hasta else "Acumulado"
         ws = wb.create_sheet("Kardex PEPS")
         ws.sheet_properties.tabColor = "9B59B6"
-        start = add_title(ws, "Kardex PEPS", "Inventario por producto - Método PEPS")
+        start = add_title(ws, "Kardex PEPS", f"Inventario por producto — Método PEPS — {periodo_str}")
         headers = ["Producto", "Fecha", "Tipo", "Cantidad", "Costo Unit.", "Costo Total", "Saldo Cant.", "Saldo Costo"]
         widths = [22, 14, 10, 12, 14, 14, 14, 14]
         for i, (h, w) in enumerate(zip(headers, widths), 1):
@@ -3108,115 +3274,16 @@ def exportar_reporte():
                 r += 1
             r += 1
 
-    # ══════════════ HOJA FISCAL: IVA ══════════════
-    if tipo_reporte in ["todos", "fiscal_iva"]:
-        desde = request.form.get("desde", "")
-        hasta = request.form.get("hasta", "")
-        if not desde or not hasta:
-            desde = f"{date.today().year}-01-01"
-            hasta = date.today().isoformat()
-        total_ing, total_gas = _calcular_ingresos_gastos(data, desde, hasta)
-        iva_deb = round(total_ing * 0.15, 2)
-        iva_cred = round(total_gas * 0.15, 2)
-        iva_pagar = round(iva_deb - iva_cred, 2)
-        ws = wb.create_sheet("IVA")
-        ws.sheet_properties.tabColor = "F39C12"
-        start = add_title(ws, "Reporte de IVA", f"Período: {desde} al {hasta}")
-        headers = ["Concepto", "Base C$", "IVA 15% C$"]
-        for i, h in enumerate(headers, 1):
-            ws.cell(row=start, column=i, value=h)
-        style_header_row(ws, start, len(headers))
-        ws.column_dimensions["A"].width = 30
-        ws.column_dimensions["B"].width = 20
-        ws.column_dimensions["C"].width = 20
-        rows_data = [
-            ("Ingresos Gravados", total_ing, iva_deb),
-            ("Gastos con IVA", total_gas, iva_cred),
-        ]
-        for i, (concepto, base, iva) in enumerate(rows_data, start + 1):
-            ws.cell(row=i, column=1, value=concepto)
-            ws.cell(row=i, column=2, value=base).number_format = money_fmt
-            ws.cell(row=i, column=3, value=iva).number_format = money_fmt
-            style_data_row(ws, i, len(headers))
-        r2 = start + 1 + len(rows_data)
-        ws.cell(row=r2, column=1, value="IVA a Pagar")
-        ws.cell(row=r2, column=3, value=iva_pagar).number_format = money_fmt
-        style_total_row(ws, r2, len(headers))
-
-    # ══════════════ HOJA FISCAL: DGI ══════════════
-    if tipo_reporte in ["todos", "fiscal_dgi"]:
-        desde = request.form.get("desde", "")
-        hasta = request.form.get("hasta", "")
-        if not desde or not hasta:
-            desde = f"{date.today().year}-01-01"
-            hasta = date.today().isoformat()
-        total_ing, total_gas = _calcular_ingresos_gastos(data, desde, hasta)
-        utilidad = round(total_ing - total_gas, 2)
-        ir_estimado = round(utilidad * 0.30, 2) if utilidad > 0 else 0
-        ws = wb.create_sheet("DGI")
-        ws.sheet_properties.tabColor = "E74C3C"
-        start = add_title(ws, "Reporte DGI", f"Período: {desde} al {hasta}")
-        headers = ["Concepto", "Monto C$"]
-        for i, h in enumerate(headers, 1):
-            ws.cell(row=start, column=i, value=h)
-        style_header_row(ws, start, len(headers))
-        ws.column_dimensions["A"].width = 30
-        ws.column_dimensions["B"].width = 20
-        rows_data = [
-            ("Ingresos Brutos", total_ing),
-            ("Gastos Deducibles", total_gas),
-            ("Utilidad Neta", utilidad),
-            ("IR (30%) Estimado", ir_estimado),
-        ]
-        for i, (concepto, monto) in enumerate(rows_data, start + 1):
-            ws.cell(row=i, column=1, value=concepto)
-            ws.cell(row=i, column=2, value=monto).number_format = money_fmt
-            style_data_row(ws, i, len(headers))
-        r2 = start + 1 + len(rows_data)
-        ws.cell(row=r2, column=1, value="Total a Declarar")
-        ws.cell(row=r2, column=2, value=utilidad).number_format = money_fmt
-        style_total_row(ws, r2, len(headers))
-
-    # ══════════════ HOJA FISCAL: Alcaldía ══════════════
-    if tipo_reporte in ["todos", "fiscal_alcaldia"]:
-        desde = request.form.get("desde", "")
-        hasta = request.form.get("hasta", "")
-        if not desde or not hasta:
-            desde = f"{date.today().year}-01-01"
-            hasta = date.today().isoformat()
-        total_ing, _ = _calcular_ingresos_gastos(data, desde, hasta)
-        impuesto_alc = round(total_ing * 0.01, 2)
-        ws = wb.create_sheet("Alcaldia")
-        ws.sheet_properties.tabColor = "27AE60"
-        start = add_title(ws, "Impuesto Municipal", f"Período: {desde} al {hasta}")
-        headers = ["Concepto", "Monto C$"]
-        for i, h in enumerate(headers, 1):
-            ws.cell(row=start, column=i, value=h)
-        style_header_row(ws, start, len(headers))
-        ws.column_dimensions["A"].width = 30
-        ws.column_dimensions["B"].width = 20
-        r = start + 1
-        ws.cell(row=r, column=1, value="Ingresos Brutos")
-        ws.cell(row=r, column=2, value=total_ing).number_format = money_fmt
-        style_data_row(ws, r, len(headers))
-        r += 1
-        ws.cell(row=r, column=1, value="Tasa Municipal")
-        ws.cell(row=r, column=2, value="1%")
-        style_data_row(ws, r, len(headers))
-        r += 1
-        ws.cell(row=r, column=1, value="Impuesto a Pagar")
-        ws.cell(row=r, column=2, value=impuesto_alc).number_format = money_fmt
-        style_total_row(ws, r, len(headers))
-
     # ══════════════ HOJA: ANTIGÜEDAD DE COBROS ══════════════
-    if tipo_reporte in ["todos", "antiguedad_cobros"]:
+    if "cobros" in hojas_seleccionadas:
+        periodo_str = f"Período: {desde} al {hasta}" if desde and hasta else "Acumulado"
         hoy = date.today()
         cobros = data.get("cuentas_cobrar", [])
         activos = [c for c in cobros if c.get("estado", "pendiente") != "pagado"]
         ws = wb.create_sheet("Antiguedad Cobros")
         ws.sheet_properties.tabColor = "E67E22"
         start = add_title(ws, "Antigüedad de Cuentas por Cobrar",
-                          "Saldos pendientes por rango de vencimiento")
+                          f"Saldos pendientes por rango de vencimiento — {periodo_str}")
         headers = ["Rango", "Cantidad", "Total C$"]
         for i, h in enumerate(headers, 1):
             ws.cell(row=start, column=i, value=h)
@@ -3282,20 +3349,17 @@ def exportar_reporte():
         ws.cell(row=1, column=1, value="No hay datos para este reporte.")
 
     # ── Enviar archivo como descarga (el usuario elige dónde guardarlo) ──
-    nombre_tipos = {
-        "todos": "Completo",
-        "diario": "Libro_Diario",
-        "mayor": "Libro_Mayor",
-        "balanza": "Balanza_Comprobacion",
-        "estado_resultados": "Estado_Resultados",
-        "balance_general": "Balance_General",
-        "kardex": "Kardex_PEPS",
-        "antiguedad_cobros": "Antiguedad_Cobros",
-        "fiscal_iva": "IVA",
-        "fiscal_dgi": "DGI",
-        "fiscal_alcaldia": "Alcaldia",
+    nombre_hojas = {
+        "diario": "Diario", "mayor": "Mayor", "balanza": "Balanza",
+        "er": "EstadoResultados", "bg": "BalanceGeneral",
+        "pos": "VentasPOS", "kardex": "KardexPEPS", "cobros": "AntiguedadCobros",
     }
-    label = nombre_tipos.get(tipo_reporte, "Reporte")
+    if len(hojas_seleccionadas) == 8 or not hojas_seleccionadas:
+        label = "Completo"
+    elif len(hojas_seleccionadas) == 1:
+        label = nombre_hojas.get(list(hojas_seleccionadas)[0], "Reporte")
+    else:
+        label = "_".join(nombre_hojas.get(h, h) for h in sorted(hojas_seleccionadas))
     fecha_str = date.today().isoformat()
     filename = f"FG_{label}_{fecha_str}.xlsx"
 
@@ -3407,7 +3471,8 @@ def pdf_completo():
 @login_required
 def pdf_antiguedad_cobros():
     from services.reportes_pdf import pdf_antiguedad_cobros as fn
-    return _send_pdf(fn, load_data(), "Antiguedad_Cobros.pdf")
+    d, h = _desde_hasta()
+    return _send_pdf(fn, load_data(), "Antiguedad_Cobros.pdf", d, h)
 
 
 # ═══════════════════════════════════════════════════════════════

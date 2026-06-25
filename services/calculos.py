@@ -139,13 +139,16 @@ def calcular_balanza(data):
             else:
                 items.append({"tipo": "leaf", "nombre": info["nombre"], "nivel": nivel, "codigo": codigo, "_row": _calc_row(codigo)})
 
-        # Insert subtotals bottom-up
+        # Insert subtotals bottom-up — only at nivel 0 (type level)
         max_nivel = max((item["nivel"] for item in items), default=0)
         for nivel in range(max_nivel, -1, -1):
             i = 0
             while i < len(items):
                 item = items[i]
                 if item["tipo"] == "header" and item["nivel"] == nivel:
+                    if nivel > 0:
+                        i += 1
+                        continue
                     total_d = 0; total_h = 0; total_sd = 0; total_sh = 0
                     j = i + 1
                     while j < len(items):
@@ -170,8 +173,10 @@ def calcular_balanza(data):
                 else:
                     i += 1
 
-        # Flatten into balanza list
+        # Flatten into balanza list (no subtotals — template handles type-level totals)
         for item in items:
+            if item["tipo"] == "subtotal":
+                continue
             r = item.get("_row", {"debe": 0, "haber": 0, "saldo_debe": 0, "saldo_haber": 0})
             balanza.append({
                 "codigo": item.get("codigo", ""),
@@ -182,7 +187,7 @@ def calcular_balanza(data):
                 "saldo_debe": r["saldo_debe"],
                 "saldo_haber": r["saldo_haber"],
                 "es_header": item["tipo"] == "header",
-                "es_subtotal": item["tipo"] == "subtotal",
+                "es_subtotal": False,
                 "nivel": item["nivel"],
             })
             if item["tipo"] != "header":

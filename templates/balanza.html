@@ -16,78 +16,157 @@
   </div>
 </div>
 
-<!-- KPIs -->
+<div class="card" style="margin-bottom:18px;">
+  <div style="display:flex;gap:12px;align-items:end;flex-wrap:wrap;">
+    <div class="form-group" style="max-width:200px;">
+      <label>Período</label>
+      <select id="filtroPeriodo" onchange="cambiarPeriodo()" style="width:100%;">
+        <option value="">Todos</option>
+        {% for m in meses %}
+        <option value="{{ m }}" {% if periodo_actual == m %}selected{% endif %}>{{ m }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group" style="flex:1;min-width:200px;">
+      <label>Buscar cuenta</label>
+      <input type="text" id="buscarCuenta" oninput="filtrarTabla()" placeholder="Nombre o código...">
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-outline" onclick="toggleCompacto()" id="btnCompacto" style="white-space:nowrap;">
+        📋 <span id="txtCompacto">Completa</span>
+      </button>
+      <button class="btn btn-outline" onclick="toggleDesbalanceados()" id="btnDesbalance" style="white-space:nowrap;">
+        ⚠️ Desbalanceadas
+      </button>
+      <a href="/reportes/pdf/balanza{% if periodo_actual %}?periodo={{ periodo_actual }}{% endif %}"
+         class="btn btn-outline" target="_blank" style="white-space:nowrap;">
+        🖨️ PDF
+      </a>
+    </div>
+  </div>
+</div>
+
 <div class="grid-4" style="margin-bottom:22px;">
   <div class="stat-card">
     <div class="accent-bar" style="background:var(--green);"></div>
-    <div class="label">Total Debe</div>
+    <div class="label">Total Mov. Deudor</div>
     <div class="value money" style="font-size:18px;">C$ {{ "%.2f"|format(total_debe) }}</div>
+    {% if total_debe_ant > 0 %}
+    <div class="trend {% if total_debe > total_debe_ant %}up{% else %}down{% endif %}">
+      {{ "%.1f"|format(((total_debe - total_debe_ant) / total_debe_ant * 100) if total_debe_ant else 0) }}% vs anterior
+    </div>
+    {% endif %}
   </div>
   <div class="stat-card">
     <div class="accent-bar" style="background:var(--red);"></div>
-    <div class="label">Total Haber</div>
+    <div class="label">Total Mov. Acreedor</div>
     <div class="value money" style="font-size:18px;">C$ {{ "%.2f"|format(total_haber) }}</div>
+    {% if total_haber_ant > 0 %}
+    <div class="trend {% if total_haber > total_haber_ant %}up{% else %}down{% endif %}">
+      {{ "%.1f"|format(((total_haber - total_haber_ant) / total_haber_ant * 100) if total_haber_ant else 0) }}% vs anterior
+    </div>
+    {% endif %}
   </div>
   <div class="stat-card">
     <div class="accent-bar" style="background:var(--accent);"></div>
-    <div class="label">Saldo Debe</div>
+    <div class="label">Saldo Deudor</div>
     <div class="value money" style="font-size:18px;">C$ {{ "%.2f"|format(total_saldo_debe) }}</div>
   </div>
   <div class="stat-card">
     <div class="accent-bar" style="background:var(--accent2);"></div>
-    <div class="label">Saldo Haber</div>
+    <div class="label">Saldo Acreedor</div>
     <div class="value money" style="font-size:18px;">C$ {{ "%.2f"|format(total_saldo_haber) }}</div>
   </div>
 </div>
 
-<div class="card">
-  <table>
+<div class="card" style="margin-bottom:18px;">
+  <div class="card-title"><span class="icon">📊</span> Resumen por Tipo</div>
+  <div style="display:flex;align-items:center;justify-content:center;gap:40px;flex-wrap:wrap;">
+    <div style="width:300px;height:200px;"><canvas id="chartBalanza"></canvas></div>
+    <div id="resumenTipos" style="font-size:13px;"></div>
+  </div>
+</div>
+
+<div class="card" id="tablaBalanza">
+  <div class="card-title"><span class="icon">📋</span> Detalle de Cuentas</div>
+  <table style="width:100%;border-collapse:collapse;font-size:13px;">
     <thead>
-      <tr>
-        <th>Código</th>
-        <th>Cuenta</th>
-        <th>Tipo</th>
-        <th style="text-align:right;">Debe C$</th>
-        <th style="text-align:right;">Haber C$</th>
-        <th style="text-align:right;">Saldo Debe C$</th>
-        <th style="text-align:right;">Saldo Haber C$</th>
+      <tr style="background:linear-gradient(135deg,#8B4513 0%,#A0522D 100%);">
+        <th colspan="6" style="color:#fff;font-size:15px;font-weight:700;padding:12px;text-align:center;border:1px solid #6B3410;">
+          Balanza de Comprobación {{ " — " + periodo_actual if periodo_actual else "" }}
+        </th>
+      </tr>
+      <tr style="background:#CD853F;">
+        <th style="color:#fff;font-weight:600;padding:8px;border:1px solid #8B4513;width:80px;">Código</th>
+        <th style="color:#fff;font-weight:600;padding:8px 12px;border:1px solid #8B4513;text-align:left;">Cuenta</th>
+        <th style="color:#fff;font-weight:600;padding:8px;border:1px solid #8B4513;text-align:right;">Mov. Deudor</th>
+        <th style="color:#fff;font-weight:600;padding:8px;border:1px solid #8B4513;text-align:right;">Mov. Acreedor</th>
+        <th style="color:#fff;font-weight:600;padding:8px;border:1px solid #8B4513;text-align:right;">Saldo Deudor</th>
+        <th style="color:#fff;font-weight:600;padding:8px;border:1px solid #8B4513;text-align:right;">Saldo Acreedor</th>
       </tr>
     </thead>
     <tbody>
+      {% set tipo_icono = {"Activo": "📦", "Pasivo": "💳", "Capital": "🏛️", "Ingreso": "💚", "Gasto": "❤️"} %}
+      {% set tipo_actual = namespace(val="") %}
+
       {% for row in balanza %}
-        {% if row.es_header %}
-      <tr><td colspan="7" style="font-weight:700;color:var(--text-bright);padding-left:{{ row.nivel * 20 }}px;padding-top:8px;">{{ row.nombre }}</td></tr>
-        {% elif row.es_subtotal %}
-      <tr class="totals-row">
-        <td colspan="2" style="padding-left:{{ row.nivel * 20 }}px;">{{ row.nombre }}</td>
-        <td></td>
-        <td style="text-align:right;" class="money">C$ {{ "%.2f"|format(row.debe) }}</td>
-        <td style="text-align:right;" class="money">C$ {{ "%.2f"|format(row.haber) }}</td>
-        <td style="text-align:right;" class="money money-pos">C$ {{ "%.2f"|format(row.saldo_debe) }}</td>
-        <td style="text-align:right;" class="money money-neg">C$ {{ "%.2f"|format(row.saldo_haber) }}</td>
-      </tr>
-        {% elif row.debe != 0 or row.haber != 0 %}
-      <tr>
-        <td><span class="badge badge-blue" style="font-size:10px;">{{ row.codigo }}</span></td>
-        <td style="color:var(--text-bright);font-weight:500;padding-left:{{ (row.nivel + 1) * 20 }}px;">{{ row.nombre }}</td>
-        <td>
-          <span class="badge {% if row.tipo == 'Activo' %}badge-blue{% elif row.tipo == 'Pasivo' %}badge-red{% elif row.tipo == 'Capital' %}badge-green{% elif row.tipo == 'Ingreso' %}badge-green{% else %}badge-yellow{% endif %}" style="font-size:10px;">{{ row.tipo }}</span>
+
+        {# ── Type separator ── #}
+        {% if row.tipo and row.tipo != tipo_actual.val and row.tipo in tipo_icono %}
+          {% set tipo_actual.val = row.tipo %}
+      <tr class="tipo-separador" data-tipo="{{ row.tipo }}">
+        <td colspan="6" style="padding:8px 12px;font-weight:700;color:#5C3317;font-size:14px;background:rgba(139,69,19,0.08);border-top:2px solid #DEB887;">
+          {{ tipo_icono.get(row.tipo, "") }} {{ row.tipo }}
         </td>
-        <td style="text-align:right;" class="money money-pos">{% if row.debe > 0 %}C$ {{ "%.2f"|format(row.debe) }}{% endif %}</td>
-        <td style="text-align:right;" class="money money-neg">{% if row.haber > 0 %}C$ {{ "%.2f"|format(row.haber) }}{% endif %}</td>
-        <td style="text-align:right;" class="money money-pos">{% if row.saldo_debe > 0 %}C$ {{ "%.2f"|format(row.saldo_debe) }}{% endif %}</td>
-        <td style="text-align:right;" class="money money-neg">{% if row.saldo_haber > 0 %}C$ {{ "%.2f"|format(row.saldo_haber) }}{% endif %}</td>
+      </tr>
+        {% endif %}
+
+        {# ── Leaf rows (cuentas con movimiento) ── #}
+        {% if not row.es_header and not row.es_subtotal and (row.debe != 0 or row.haber != 0 or row.saldo_debe != 0 or row.saldo_haber != 0) %}
+      <tr class="fila-cuenta" data-nombre="{{ row.nombre|lower }}" data-codigo="{{ row.codigo }}" data-tipo="{{ row.tipo }}">
+        <td style="padding:6px 8px;border:1px solid #DEB887;font-family:monospace;font-size:12px;color:#666;">{{ row.codigo }}</td>
+        <td style="padding:6px 8px;border:1px solid #DEB887;font-weight:500;">{{ row.nombre }}</td>
+        <td style="padding:6px 8px;border:1px solid #DEB887;text-align:right;font-family:monospace;">{% if row.debe > 0 %}{{ "%.2f"|format(row.debe) }}{% else %}0.00{% endif %}</td>
+        <td style="padding:6px 8px;border:1px solid #DEB887;text-align:right;font-family:monospace;">{% if row.haber > 0 %}{{ "%.2f"|format(row.haber) }}{% else %}0.00{% endif %}</td>
+        <td style="padding:6px 8px;border:1px solid #DEB887;text-align:right;font-family:monospace;">{% if row.saldo_debe > 0 %}{{ "%.2f"|format(row.saldo_debe) }}{% else %}0.00{% endif %}</td>
+        <td style="padding:6px 8px;border:1px solid #DEB887;text-align:right;font-family:monospace;">{% if row.saldo_haber > 0 %}{{ "%.2f"|format(row.saldo_haber) }}{% else %}0.00{% endif %}</td>
+      </tr>
+        {% endif %}
+
+        {# ── Subtotal rows ── #}
+        {% if row.es_subtotal %}
+      <tr class="fila-subtotal" style="background:rgba(139,69,19,0.15);border-top:2px solid #8B4513;">
+        <td colspan="2" style="padding:8px 12px;font-weight:700;color:#8B4513;">{{ row.nombre }}</td>
+        <td style="padding:8px;border:1px solid #DEB887;text-align:right;font-family:monospace;font-weight:700;">{% if row.debe > 0 %}{{ "%.2f"|format(row.debe) }}{% else %}0.00{% endif %}</td>
+        <td style="padding:8px;border:1px solid #DEB887;text-align:right;font-family:monospace;font-weight:700;">{% if row.haber > 0 %}{{ "%.2f"|format(row.haber) }}{% else %}0.00{% endif %}</td>
+        <td style="padding:8px;border:1px solid #DEB887;text-align:right;font-family:monospace;font-weight:700;">{% if row.saldo_debe > 0 %}{{ "%.2f"|format(row.saldo_debe) }}{% else %}0.00{% endif %}</td>
+        <td style="padding:8px;border:1px solid #DEB887;text-align:right;font-family:monospace;font-weight:700;">{% if row.saldo_haber > 0 %}{{ "%.2f"|format(row.saldo_haber) }}{% else %}0.00{% endif %}</td>
+      </tr>
+        {% endif %}
+
+      {% endfor %}
+
+      <!-- TOTAL POR TIPO -->
+      {% for tipo in ["Activo", "Pasivo", "Capital", "Ingreso", "Gasto"] %}
+        {% if tipo in tipos_totales and (tipos_totales[tipo].debe != 0 or tipos_totales[tipo].haber != 0) %}
+          {% set tt = tipos_totales[tipo] %}
+      <tr class="fila-tipo-total" data-tipo="{{ tipo }}" style="background:rgba(139,69,19,0.2);border-top:2px solid #8B4513;">
+        <td colspan="2" style="padding:8px 12px;font-weight:700;color:#8B4513;font-size:14px;">Total {{ tipo_icono.get(tipo, "") }} {{ tipo }}</td>
+        <td style="padding:8px;border:1px solid #DEB887;text-align:right;font-family:monospace;font-weight:700;">{{ "%.2f"|format(tt.debe) }}</td>
+        <td style="padding:8px;border:1px solid #DEB887;text-align:right;font-family:monospace;font-weight:700;">{{ "%.2f"|format(tt.haber) }}</td>
+        <td style="padding:8px;border:1px solid #DEB887;text-align:right;font-family:monospace;font-weight:700;">{{ "%.2f"|format(tt.saldo_debe) }}</td>
+        <td style="padding:8px;border:1px solid #DEB887;text-align:right;font-family:monospace;font-weight:700;">{{ "%.2f"|format(tt.saldo_haber) }}</td>
       </tr>
         {% endif %}
       {% endfor %}
 
-      <!-- TOTALES -->
-      <tr class="totals-row">
-        <td colspan="3" style="font-weight:700;color:var(--text-bright);">TOTALES</td>
-        <td style="text-align:right;" class="money">C$ {{ "%.2f"|format(total_debe) }}</td>
-        <td style="text-align:right;" class="money">C$ {{ "%.2f"|format(total_haber) }}</td>
-        <td style="text-align:right;" class="money">C$ {{ "%.2f"|format(total_saldo_debe) }}</td>
-        <td style="text-align:right;" class="money">C$ {{ "%.2f"|format(total_saldo_haber) }}</td>
+      <!-- SUMAS IGUALES -->
+      <tr style="background:#8B4513;border-top:3px solid #6B3410;">
+        <td colspan="2" style="padding:10px 12px;border:1px solid #6B3410;font-weight:700;color:#fff;font-size:14px;">Sumas iguales</td>
+        <td style="padding:10px;border:1px solid #6B3410;text-align:right;font-family:monospace;font-weight:700;color:#fff;">{{ "%.2f"|format(total_debe) }}</td>
+        <td style="padding:10px;border:1px solid #6B3410;text-align:right;font-family:monospace;font-weight:700;color:#fff;">{{ "%.2f"|format(total_haber) }}</td>
+        <td style="padding:10px;border:1px solid #6B3410;text-align:right;font-family:monospace;font-weight:700;color:#fff;">{{ "%.2f"|format(total_saldo_debe) }}</td>
+        <td style="padding:10px;border:1px solid #6B3410;text-align:right;font-family:monospace;font-weight:700;color:#fff;">{{ "%.2f"|format(total_saldo_haber) }}</td>
       </tr>
     </tbody>
   </table>
@@ -96,4 +175,108 @@
   <p style="color:var(--text-dim);text-align:center;padding:30px;">La balanza se genera automáticamente desde el Diario y los Ajustes.</p>
   {% endif %}
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function cambiarPeriodo() {
+  const p = document.getElementById('filtroPeriodo').value;
+  window.location.href = '/balanza' + (p ? '?periodo=' + p : '');
+}
+
+function filtrarTabla() {
+  const buscar = document.getElementById('buscarCuenta').value.toLowerCase();
+  document.querySelectorAll('.fila-cuenta').forEach(fila => {
+    const nombre = fila.dataset.nombre || '';
+    const codigo = fila.dataset.codigo || '';
+    fila.style.display = (nombre.includes(buscar) || codigo.includes(buscar)) ? '' : 'none';
+  });
+}
+
+let compacto = false;
+function toggleCompacto() {
+  compacto = !compacto;
+  document.getElementById('txtCompacto').textContent = compacto ? 'Completa' : 'Compacta';
+  document.querySelectorAll('.fila-cuenta').forEach(fila => {
+    if (compacto) {
+      const debe = parseFloat(fila.children[2]?.textContent) || 0;
+      const haber = parseFloat(fila.children[3]?.textContent) || 0;
+      const sd = parseFloat(fila.children[4]?.textContent) || 0;
+      const sh = parseFloat(fila.children[5]?.textContent) || 0;
+      fila.style.display = (debe === 0 && haber === 0 && sd === 0 && sh === 0) ? 'none' : '';
+    } else {
+      fila.style.display = '';
+    }
+  });
+}
+
+let soloDesbalance = false;
+function toggleDesbalanceados() {
+  soloDesbalance = !soloDesbalance;
+  const btn = document.getElementById('btnDesbalance');
+  btn.style.background = soloDesbalance ? 'rgba(231,76,60,0.2)' : '';
+  document.querySelectorAll('.fila-cuenta').forEach(fila => {
+    if (soloDesbalance) {
+      const debe = parseFloat(fila.children[2]?.textContent) || 0;
+      const haber = parseFloat(fila.children[3]?.textContent) || 0;
+      fila.style.display = (debe !== haber && (debe > 0 || haber > 0)) ? '' : 'none';
+    } else {
+      fila.style.display = '';
+    }
+  });
+}
+
+// Resaltar filas desbalanceadas
+document.querySelectorAll('.fila-cuenta').forEach(fila => {
+  const debe = parseFloat(fila.children[2]?.textContent) || 0;
+  const haber = parseFloat(fila.children[3]?.textContent) || 0;
+  if (debe !== haber && (debe > 0 || haber > 0)) {
+    fila.style.borderLeft = '3px solid #e74c3c';
+    fila.style.background = 'rgba(231,76,60,0.05)';
+  }
+});
+
+// Chart
+const tipos = {};
+document.querySelectorAll('.fila-cuenta').forEach(fila => {
+  const tipo = fila.dataset.tipo;
+  if (!tipo) return;
+  const debe = parseFloat(fila.children[2]?.textContent) || 0;
+  const haber = parseFloat(fila.children[3]?.textContent) || 0;
+  if (!tipos[tipo]) tipos[tipo] = {debe: 0, haber: 0};
+  tipos[tipo].debe += debe;
+  tipos[tipo].haber += haber;
+});
+
+const colores = {'Activo': '#4F8CFF', 'Pasivo': '#E74C3C', 'Capital': '#2ECC71', 'Ingreso': '#9B59B6', 'Gasto': '#F39C12'};
+let htmlResumen = '';
+Object.keys(tipos).forEach(t => {
+  if (tipos[t].debe > 0 || tipos[t].haber > 0) {
+    htmlResumen += `<div style="padding:4px 0;color:${colores[t] || '#999'};">`;
+    htmlResumen += `<span style="display:inline-block;width:12px;height:12px;background:${colores[t] || '#999'};border-radius:3px;margin-right:8px;"></span>`;
+    htmlResumen += `${t}: Debe C$ ${tipos[t].debe.toFixed(2)} | Haber C$ ${tipos[t].haber.toFixed(2)}</div>`;
+  }
+});
+document.getElementById('resumenTipos').innerHTML = htmlResumen;
+
+const ctx = document.getElementById('chartBalanza');
+if (ctx && Object.keys(tipos).length > 0) {
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: Object.keys(tipos),
+      datasets: [
+        { label: 'Debe', data: Object.values(tipos).map(t => t.debe), backgroundColor: 'rgba(46,204,113,0.7)' },
+        { label: 'Haber', data: Object.values(tipos).map(t => t.haber), backgroundColor: 'rgba(231,76,60,0.7)' }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: true, position: 'top' } },
+      scales: { y: { beginAtZero: true } }
+    }
+  });
+}
+</script>
 {% endblock %}

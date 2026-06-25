@@ -249,7 +249,6 @@ def pdf_balance_general(data, desde=None, hasta=None, pdf=None):
 
 def pdf_diario(data, desde=None, hasta=None, pdf=None):
     filtrada = _filtrar_por_periodo(data, desde, hasta) if desde or hasta else data
-    c = _cargar_data(data, desde, hasta)
     p = _init_pdf(pdf)
     p.titulo("Libro Diario")
     p.subtitulo("Registro cronologico de asientos")
@@ -257,7 +256,9 @@ def pdf_diario(data, desde=None, hasta=None, pdf=None):
     headers = ["#", "Fecha", "Descripcion", "Cuenta", "Debe", "Haber"]
     widths = [8, 18, 50, 36, 28, 28]
     p.encabezado_tabla(headers, widths)
-    for entry in filtrada.get("diario", []):
+    all_entries = list(filtrada.get("diario", [])) + list(filtrada.get("ajustes", []))
+    all_entries.sort(key=lambda x: x.get("fecha", ""))
+    for entry in all_entries:
         if p.get_y() > 250:
             p.add_page()
             p.encabezado_tabla(headers, widths)
@@ -274,7 +275,7 @@ def pdf_diario(data, desde=None, hasta=None, pdf=None):
             else:
                 p.cell(widths[0] + widths[1] + widths[2], 5, "")
             p.set_text_color(45, 45, 63)
-            p.cell(widths[3], 5, f"{mov['cuenta']} {c['cuentas'].get(mov['cuenta'], {}).get('nombre', '')[:20]}")
+            p.cell(widths[3], 5, f"{mov['cuenta']} {data['cuentas'].get(mov['cuenta'], {}).get('nombre', '')[:20]}")
             debe = p.celda_monto(mov["monto"]) if mov["tipo"] == "Debe" else ""
             haber = p.celda_monto(mov["monto"]) if mov["tipo"] == "Haber" else ""
             p.cell(widths[4], 5, debe, align="R")
@@ -382,10 +383,17 @@ def pdf_antiguedad_cobros(data, desde=None, hasta=None, pdf=None):
     p = _init_pdf(pdf)
     p.titulo("Antiguedad de Cuentas por Cobrar")
     p.subtitulo("Saldos pendientes por rango de vencimiento")
+    p.subtitulo(_periodo_str(desde, hasta))
     from datetime import date, timedelta
     hoy = date.today()
     cobros = data.get("cuentas_cobrar", [])
     activos = [c for c in cobros if c.get("estado", "pendiente") != "pagado"]
+    if desde and hasta:
+        activos = [c for c in activos if desde <= c.get("fecha", "") <= hasta]
+    elif desde:
+        activos = [c for c in activos if desde <= c.get("fecha", "")]
+    elif hasta:
+        activos = [c for c in activos if c.get("fecha", "") <= hasta]
     if not activos:
         p.set_font("Helvetica", "", 10)
         p.set_text_color(122, 127, 153)

@@ -112,3 +112,35 @@ def test_api_endpoints(client):
     for path in apis:
         r = client.get(path)
         assert r.status_code == 200, f"{path} returned {r.status_code}"
+
+
+def test_export_multi_hojas(client):
+    r = client.post("/reportes/exportar", data={
+        "hojas": ["diario", "balanza"],
+    })
+    assert r.status_code == 200
+    assert r.content_type.startswith("application/vnd.openxmlformats")
+
+
+def test_export_legacy_tipo(client):
+    r = client.post("/reportes/exportar", data={
+        "tipo": "diario",
+    })
+    assert r.status_code == 200
+
+
+def test_export_with_cuenta_filter(client):
+    r = client.post("/reportes/exportar", data={
+        "hojas": ["mayor"],
+        "tipo_cuenta": "Activo",
+    })
+    assert r.status_code == 200
+
+
+def test_export_with_periodo(client):
+    r = client.post("/reportes/exportar", data={
+        "hojas": ["diario", "er", "bg"],
+        "desde": "2025-10-01",
+        "hasta": "2025-10-31",
+    })
+    assert r.status_code == 200
