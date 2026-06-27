@@ -3354,11 +3354,22 @@ def exportar_reporte():
         for ci, w in enumerate(widths, 1):
             ws.column_dimensions[get_column_letter(ci)].width = w
         r = start + 1
+        total_saldo_costo = 0
+        total_saldo_cant = 0
+        num_productos = 0
         productos = sorted(data["kardex"].keys())
         for nombre in productos:
             movimientos = data["kardex"][nombre]
             if not movimientos:
                 continue
+            num_productos += 1
+            # Obtener último saldo del producto
+            ultimo = movimientos[-1]
+            ultimo_saldo_cant = ultimo.get("saldo", 0)
+            ultimo_saldo_costo = ultimo.get("costo", 0) * ultimo_saldo_cant if ultimo_saldo_cant else 0
+            total_saldo_cant += ultimo_saldo_cant
+            total_saldo_costo += ultimo_saldo_costo
+
             ws.cell(row=r, column=1, value=nombre).font = Font(name="Calibri", size=10, bold=True, color="333333")
             r += 1
             for mov in movimientos:
@@ -3383,6 +3394,28 @@ def exportar_reporte():
                 style_data_row(ws, r, len(headers))
                 r += 1
             r += 1
+
+        # Fila resumen final
+        r += 1
+        ws.cell(row=r, column=1, value="RESUMEN INVENTARIO").font = Font(
+            name="Calibri", size=11, bold=True, color="1A1D2E"
+        )
+        r += 1
+        ws.cell(row=r, column=1, value="Total Productos:")
+        ws.cell(row=r, column=2, value=num_productos).font = Font(
+            name="Calibri", size=11, bold=True, color="4F8CFF"
+        )
+        r += 1
+        ws.cell(row=r, column=1, value="Total Unidades en Stock:")
+        ws.cell(row=r, column=2, value=total_saldo_cant).font = Font(
+            name="Calibri", size=11, bold=True, color="4F8CFF"
+        )
+        r += 1
+        ws.cell(row=r, column=1, value="Valor Total Inventario:")
+        ws.cell(row=r, column=2, value=total_saldo_costo).number_format = money_fmt
+        ws.cell(row=r, column=2).font = Font(
+            name="Calibri", size=12, bold=True, color="27AE60"
+        )
 
     # ══════════════ HOJA: ANTIGÜEDAD DE COBROS ══════════════
     if "cobros" in hojas_seleccionadas:
