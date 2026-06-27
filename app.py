@@ -2749,6 +2749,7 @@ def exportar_reporte():
         return filtered
 
     # Filtrar data por período si se proporciona
+    data_original = data  # Guardar referencia a datos completos para saldos iniciales
     if desde or hasta:
         import copy
         data = copy.deepcopy(data)
@@ -2897,16 +2898,29 @@ def exportar_reporte():
         ws = wb.create_sheet("Libro Mayor")
         ws.sheet_properties.tabColor = "7C5CFC"
         start = add_title(ws, "Libro Mayor", f"Cuentas T — Movimientos por cuenta — {periodo_str}")
-        headers = ["Cuenta", "Nombre", "Tipo", "Debe C$", "Haber C$", "Saldo C$"]
+
+        # Calcular saldos iniciales (antes del período)
+        if desde:
+            data_ini = {k: v for k, v in data_original.items()}
+            data_ini["diario"] = [e for e in data_original.get("diario", []) if e.get("fecha", "") < desde]
+            data_ini["ajustes"] = [a for a in data_original.get("ajustes", []) if a.get("fecha", "") < desde]
+            mayor_ini = calcular_mayor(data_ini)
+        else:
+            mayor_ini = None
+
+        headers = ["Cuenta", "Nombre", "Tipo", "Saldo Inicial Deudor", "Saldo Inicial Acreedor", "Debe Período", "Haber Período", "Saldo Final Deudor", "Saldo Final Acreedor"]
         for i, h in enumerate(headers, 1):
             ws.cell(row=start, column=i, value=h)
         style_header_row(ws, start, len(headers))
-        ws.column_dimensions["A"].width = 10
+        ws.column_dimensions["A"].width = 12
         ws.column_dimensions["B"].width = 30
         ws.column_dimensions["C"].width = 12
         ws.column_dimensions["D"].width = 16
         ws.column_dimensions["E"].width = 16
         ws.column_dimensions["F"].width = 16
+        ws.column_dimensions["G"].width = 16
+        ws.column_dimensions["H"].width = 16
+        ws.column_dimensions["I"].width = 16
 
         r = start + 1
         for codigo in sorted(cuentas.keys()):
@@ -2915,17 +2929,38 @@ def exportar_reporte():
                 continue
             if tipo_cuenta and info.get("tipo", "") != tipo_cuenta:
                 continue
-            debe = mayor[codigo]["debe"] if codigo in mayor else 0
-            haber = mayor[codigo]["haber"] if codigo in mayor else 0
+            debe_mov = mayor[codigo]["debe"] if codigo in mayor else 0
+            haber_mov = mayor[codigo]["haber"] if codigo in mayor else 0
             ts = tipo_saldo(info["tipo"])
-            saldo = (debe - haber) if ts == "Debe" else (haber - debe)
+
+            # Saldo inicial
+            if mayor_ini is not None and codigo in mayor_ini:
+                ini_d = mayor_ini[codigo]["debe"]
+                ini_h = mayor_ini[codigo]["haber"]
+            else:
+                ini_d = 0
+                ini_h = 0
+
+            if ts == "Debe":
+                saldo_ini_d = max(ini_d - ini_h, 0)
+                saldo_ini_h = max(ini_h - ini_d, 0)
+                saldo_fin_d = max((ini_d - ini_h) + (debe_mov - haber_mov), 0)
+                saldo_fin_h = max(-(ini_d - ini_h) - (debe_mov - haber_mov), 0)
+            else:
+                saldo_ini_d = max(ini_d - ini_h, 0)
+                saldo_ini_h = max(ini_h - ini_d, 0)
+                saldo_fin_d = max((ini_d - ini_h) + (debe_mov - haber_mov), 0)
+                saldo_fin_h = max(-(ini_d - ini_h) - (debe_mov - haber_mov), 0)
+
             ws.cell(row=r, column=1, value=codigo)
             ws.cell(row=r, column=2, value=info["nombre"])
             ws.cell(row=r, column=3, value=info["tipo"])
-            ws.cell(row=r, column=4, value=debe).number_format = money_fmt
-            ws.cell(row=r, column=5, value=haber).number_format = money_fmt
-            ws.cell(row=r, column=6, value=saldo).number_format = money_fmt
-            ws.cell(row=r, column=6).font = green_font if saldo >= 0 else red_font
+            ws.cell(row=r, column=4, value=saldo_ini_d).number_format = money_fmt
+            ws.cell(row=r, column=5, value=saldo_ini_h).number_format = money_fmt
+            ws.cell(row=r, column=6, value=debe_mov).number_format = money_fmt
+            ws.cell(row=r, column=7, value=haber_mov).number_format = money_fmt
+            ws.cell(row=r, column=8, value=saldo_fin_d).number_format = money_fmt
+            ws.cell(row=r, column=9, value=saldo_fin_h).number_format = money_fmt
             style_data_row(ws, r, len(headers))
             r += 1
 
@@ -2937,52 +2972,118 @@ def exportar_reporte():
         start = add_title(
             ws, "Balanza de Comprobación", f"Verificación de débitos y créditos — {periodo_str}"
         )
+
+        # ── Calcular saldos iniciales (antes del período) ──
+        if desde:
+            import copy as _copy
+            data_completa = _copy.deepcopy(data_original)
+            data_completa["diario"] = [e for e in data_original.get("diario", []) if e.get("fecha", "") < desde]
+            data_completa["ajustes"] = [a for a in data_original.get("ajustes", []) if a.get("fecha", "") < desde]
+            mayor_inicial = calcular_mayor(data_completa)
+        else:
+            mayor_inicial = None
+
+        balanza_data, td, th, tsd, tsh = calcular_balanza(data)
+
         headers = [
             "Código",
             "Cuenta",
             "Tipo",
-            "Debe C$",
-            "Haber C$",
-            "Saldo Debe C$",
-            "Saldo Haber C$",
+            "Saldo Inicial Deudor",
+            "Saldo Inicial Acreedor",
+            "Mov. Deudor",
+            "Mov. Acreedor",
+            "Saldo Final Deudor",
+            "Saldo Final Acreedor",
         ]
         for i, h in enumerate(headers, 1):
             ws.cell(row=start, column=i, value=h)
         style_header_row(ws, start, len(headers))
-        for col in range(1, 8):
-            ws.column_dimensions[get_column_letter(col)].width = 18
+        ws.column_dimensions["A"].width = 12
+        ws.column_dimensions["B"].width = 30
+        ws.column_dimensions["C"].width = 12
+        ws.column_dimensions["D"].width = 18
+        ws.column_dimensions["E"].width = 18
+        ws.column_dimensions["F"].width = 18
+        ws.column_dimensions["G"].width = 18
+        ws.column_dimensions["H"].width = 18
+        ws.column_dimensions["I"].width = 18
 
-        balanza_data, td, th, tsd, tsh = calcular_balanza(data)
         r = start + 1
+        tot_sd_i = tot_sh_i = tot_d = tot_h = tot_sd_f = tot_sh_f = 0
         for item in balanza_data:
             if item.get("es_header"):
                 ws.cell(row=r, column=1, value=item["codigo"])
                 ws.cell(row=r, column=2, value=item["nombre"]).font = Font(
                     name="Calibri", size=10, bold=True, color="1A1D2E"
                 )
-                style_data_row(ws, r, 7)
+                style_data_row(ws, r, 9)
                 r += 1
                 continue
             if item.get("es_subtotal"):
                 continue
-            ws.cell(row=r, column=1, value=item["codigo"])
+            codigo = item["codigo"]
+            info = cuentas.get(codigo, {})
+            tipo = info.get("tipo", "")
+            ts = tipo_saldo(tipo)
+
+            debe_mov = item["debe"]
+            haber_mov = item["haber"]
+
+            # Saldo inicial (antes del período)
+            if mayor_inicial is not None and codigo in mayor_inicial:
+                ini_d = mayor_inicial[codigo]["debe"]
+                ini_h = mayor_inicial[codigo]["haber"]
+            else:
+                ini_d = 0
+                ini_h = 0
+
+            if ts == "Debe":
+                saldo_ini_d = max(ini_d - ini_h, 0)
+                saldo_ini_h = max(ini_h - ini_d, 0)
+                saldo_fin_d = max(saldo_ini_d + saldo_ini_h + (debe_mov - haber_mov), 0) if saldo_ini_d > 0 else max(debe_mov - haber_mov, 0)
+                saldo_fin_h = max(saldo_ini_h + saldo_ini_d + (haber_mov - debe_mov), 0) if saldo_ini_h > 0 else max(haber_mov - debe_mov, 0)
+                # Recalcular limpiamente
+                neto_ini = ini_d - ini_h
+                neto_fin = neto_ini + (debe_mov - haber_mov)
+                saldo_ini_d = max(neto_ini, 0)
+                saldo_ini_h = max(-neto_ini, 0)
+                saldo_fin_d = max(neto_fin, 0)
+                saldo_fin_h = max(-neto_fin, 0)
+            else:
+                neto_ini = ini_h - ini_d
+                neto_fin = neto_ini + (haber_mov - debe_mov)
+                saldo_ini_d = max(-neto_ini, 0)
+                saldo_ini_h = max(neto_ini, 0)
+                saldo_fin_d = max(-neto_fin, 0)
+                saldo_fin_h = max(neto_fin, 0)
+
+            ws.cell(row=r, column=1, value=codigo)
             ws.cell(row=r, column=2, value=item["nombre"])
-            ws.cell(row=r, column=3, value=item["tipo"])
-            ws.cell(row=r, column=4, value=item["debe"]).number_format = money_fmt
-            ws.cell(row=r, column=5, value=item["haber"]).number_format = money_fmt
-            ws.cell(row=r, column=6, value=item["saldo_debe"]).number_format = money_fmt
-            ws.cell(
-                row=r, column=7, value=item["saldo_haber"]
-            ).number_format = money_fmt
-            style_data_row(ws, r, 7)
+            ws.cell(row=r, column=3, value=tipo)
+            ws.cell(row=r, column=4, value=saldo_ini_d).number_format = money_fmt
+            ws.cell(row=r, column=5, value=saldo_ini_h).number_format = money_fmt
+            ws.cell(row=r, column=6, value=debe_mov).number_format = money_fmt
+            ws.cell(row=r, column=7, value=haber_mov).number_format = money_fmt
+            ws.cell(row=r, column=8, value=saldo_fin_d).number_format = money_fmt
+            ws.cell(row=r, column=9, value=saldo_fin_h).number_format = money_fmt
+            style_data_row(ws, r, 9)
+            tot_sd_i += saldo_ini_d
+            tot_sh_i += saldo_ini_h
+            tot_d += debe_mov
+            tot_h += haber_mov
+            tot_sd_f += saldo_fin_d
+            tot_sh_f += saldo_fin_h
             r += 1
         # Totales
         ws.cell(row=r, column=2, value="TOTALES")
-        ws.cell(row=r, column=4, value=td).number_format = money_fmt
-        ws.cell(row=r, column=5, value=th).number_format = money_fmt
-        ws.cell(row=r, column=6, value=tsd).number_format = money_fmt
-        ws.cell(row=r, column=7, value=tsh).number_format = money_fmt
-        style_total_row(ws, r, 7)
+        ws.cell(row=r, column=4, value=tot_sd_i).number_format = money_fmt
+        ws.cell(row=r, column=5, value=tot_sh_i).number_format = money_fmt
+        ws.cell(row=r, column=6, value=tot_d).number_format = money_fmt
+        ws.cell(row=r, column=7, value=tot_h).number_format = money_fmt
+        ws.cell(row=r, column=8, value=tot_sd_f).number_format = money_fmt
+        ws.cell(row=r, column=9, value=tot_sh_f).number_format = money_fmt
+        style_total_row(ws, r, 9)
 
     # ══════════════ HOJA 4: ESTADO DE RESULTADOS ══════════════
     if "er" in hojas_seleccionadas:
@@ -3240,14 +3341,13 @@ def exportar_reporte():
             style_total_row(ws, r, len(headers))
 
     # ══════════════ HOJA 7: KARDEX PEPS ══════════════
-    import kardex_peps
     if "kardex" in hojas_seleccionadas and "kardex" in data and data["kardex"]:
         periodo_str = f"Período: {desde} al {hasta}" if desde and hasta else "Acumulado"
         ws = wb.create_sheet("Kardex PEPS")
         ws.sheet_properties.tabColor = "9B59B6"
         start = add_title(ws, "Kardex PEPS", f"Inventario por producto — Método PEPS — {periodo_str}")
         headers = ["Producto", "Fecha", "Tipo", "Cantidad", "Costo Unit.", "Costo Total", "Saldo Cant.", "Saldo Costo"]
-        widths = [22, 14, 10, 12, 14, 14, 14, 14]
+        widths = [28, 14, 12, 12, 14, 14, 12, 14]
         for i, (h, w) in enumerate(zip(headers, widths), 1):
             ws.cell(row=start, column=i, value=h)
         style_header_row(ws, start, len(headers))
@@ -3256,20 +3356,30 @@ def exportar_reporte():
         r = start + 1
         productos = sorted(data["kardex"].keys())
         for nombre in productos:
-            peps = data.get("kardex_peps", {}).get(nombre, {"lotes": []})
-            lotes = peps.get("lotes", [])
-            if not lotes:
+            movimientos = data["kardex"][nombre]
+            if not movimientos:
                 continue
             ws.cell(row=r, column=1, value=nombre).font = Font(name="Calibri", size=10, bold=True, color="333333")
             r += 1
-            for lote in lotes:
-                ws.cell(row=r, column=2, value=lote.get("fecha", ""))
-                ws.cell(row=r, column=3, value=lote.get("tipo", ""))
-                ws.cell(row=r, column=4, value=lote.get("cantidad", 0))
-                ws.cell(row=r, column=5, value=lote.get("costo_unitario", 0)).number_format = money_fmt
-                ws.cell(row=r, column=6, value=lote.get("costo_total", 0)).number_format = money_fmt
-                ws.cell(row=r, column=7, value=lote.get("saldo_cantidad", 0))
-                ws.cell(row=r, column=8, value=lote.get("saldo_costo", 0)).number_format = money_fmt
+            for mov in movimientos:
+                tipo_mov = mov.get("tipo", "")
+                tipo_label = "Entrada" if tipo_mov == "entrada" else "Salida" if tipo_mov == "salida" else tipo_mov
+                cantidad = mov.get("cantidad", 0)
+                costo_unit = mov.get("costo", 0)
+                costo_total = mov.get("total", cantidad * costo_unit)
+                saldo_cant = mov.get("saldo", 0)
+                saldo_costo = mov.get("costo", 0) * saldo_cant if saldo_cant else 0
+
+                ws.cell(row=r, column=2, value=mov.get("fecha", ""))
+                ws.cell(row=r, column=3, value=tipo_label)
+                ws.cell(row=r, column=4, value=cantidad)
+                ws.cell(row=r, column=5, value=costo_unit).number_format = money_fmt
+                ws.cell(row=r, column=6, value=costo_total).number_format = money_fmt
+                ws.cell(row=r, column=7, value=saldo_cant)
+                ws.cell(row=r, column=8, value=saldo_costo).number_format = money_fmt
+                if tipo_mov == "salida":
+                    for c in range(1, 9):
+                        ws.cell(row=r, column=c).font = red_font
                 style_data_row(ws, r, len(headers))
                 r += 1
             r += 1
