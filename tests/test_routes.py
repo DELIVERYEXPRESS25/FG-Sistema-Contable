@@ -144,3 +144,9 @@ def test_export_with_periodo(client):
         "hasta": "2025-10-31",
     })
     assert r.status_code == 200
+
+
+def test_pos_editar_page(client):
+    """POS editar page loads even without data."""
+    r = client.get("/pos/editar/POS-0001")
+    assert r.status_code in (200, 302)

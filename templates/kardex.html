@@ -168,7 +168,7 @@
         <label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
           <input type="checkbox" id="auto-pv" checked> Auto C$ <span id="pv-preview">0.00</span>
         </label>
-        <span>pv = costo × (1 + margen/100)</span>
+        <span>pv = costo / (1 − margen/100)</span>
       </div>
       <button type="submit" class="btn btn-primary btn-sm">Crear Producto</button>
     </form>
@@ -588,7 +588,7 @@ if (selProducto && productosData) {
   inpCosto?.addEventListener('input', function() {
     const prod = productosData[selProducto.value];
     if (prod && prod.margen > 0 && this.value > 0) {
-      const calc = parseFloat(this.value) * (1 + prod.margen / 100);
+      const calc = parseFloat(this.value) / (1 - prod.margen / 100);
       inpPV.value = calc.toFixed(2);
       inpPV.placeholder = 'Venta C$ (auto)';
     }

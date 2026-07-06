@@ -151,6 +151,7 @@
 }
 .hist-item:hover { background: rgba(255,255,255,0.02); border-radius: 6px; padding: 10px 8px; }
 .hist-item:last-child { border-bottom: none; }
+.hist-item.anulada { opacity: .55; border-left: 3px solid var(--red); }
 .hist-ref { font-size: 11px; font-weight: 700; color: var(--accent); min-width: 75px; }
 .hist-info { flex: 1; }
 .hist-info .hi-cliente { font-size: 13px; color: var(--text-bright); font-weight: 500; }
@@ -281,17 +282,28 @@
 <div class="card historial-wrap">
   <div class="card-title"><span class="icon">📋</span> Historial de Ventas ({{ historial|length }})</div>
   {% for h in historial|reverse %}
-  <div class="hist-item" onclick="toggleDetalle('detalle-{{ loop.revindex }}')">
-    <div class="hist-ref">{{ h.ref }}</div>
+  <div class="hist-item {% if h.anulada %}anulada{% endif %}" onclick="toggleDetalle('detalle-{{ loop.revindex }}')">
+    <div class="hist-ref">
+      {{ h.ref }}
+      {% if h.anulada %}<span style="display:block;font-size:9px;color:var(--red);font-weight:700;">ANULADA</span>{% endif %}
+    </div>
     <div class="hist-info">
       <div class="hi-cliente">{{ h.cliente }}</div>
       <div class="hi-meta">{{ h.fecha }} · {{ h.forma_pago }} · {{ h.lineas|length }} producto(s)</div>
     </div>
     <div class="hist-total">
-      <div class="ht-venta">C$ {{ "%.2f"|format(h.total) }}</div>
-      <div class="ht-util {% if h.utilidad >= 0 %}pos{% else %}neg{% endif %}">
+      <div class="ht-venta" style="{% if h.anulada %}text-decoration:line-through;color:var(--text-dim);{% endif %}">C$ {{ "%.2f"|format(h.total) }}</div>
+      <div class="ht-util {% if h.utilidad >= 0 %}pos{% else %}neg{% endif %}" style="{% if h.anulada %}text-decoration:line-through;opacity:.5;{% endif %}">
         {% if h.utilidad >= 0 %}🟢{% else %}🔴{% endif %} C$ {{ "%.2f"|format(h.utilidad) }}
       </div>
+    </div>
+    <div style="display:flex;gap:4px;flex-shrink:0;">
+      {% if not h.anulada %}
+      <a href="/pos/editar/{{ h.ref }}" onclick="event.stopPropagation();" class="btn btn-outline btn-sm" style="text-decoration:none;padding:4px 10px;font-size:11px;" title="Editar venta">✏️</a>
+      <form method="POST" action="/pos/anular/{{ h.ref }}" style="margin:0;" onsubmit="event.stopPropagation();return confirm('¿Anular venta {{ h.ref }}? Se revertirá el kardex y el asiento diario.');">
+        <button type="submit" class="btn btn-outline btn-sm" style="padding:4px 10px;font-size:11px;color:var(--red);border-color:var(--red);" title="Anular venta" onclick="event.stopPropagation();">🚫</button>
+      </form>
+      {% endif %}
     </div>
   </div>
   <div class="hist-detalle" id="detalle-{{ loop.revindex }}">
@@ -310,6 +322,11 @@
         {% endfor %}
       </tbody>
     </table>
+    {% if h.anulada %}
+    <div style="padding:8px 12px;background:rgba(231,76,60,0.08);border-top:1px solid rgba(231,76,60,0.2);font-size:11px;color:var(--red);">
+      🚫 {{ h.motivo_anulacion|default("Anulada") }}
+    </div>
+    {% endif %}
   </div>
   {% endfor %}
 </div>

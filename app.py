@@ -913,7 +913,7 @@ def agregar_mov_kardex():
                     prod_mg = data.get("productos", {}).get(producto, {}).get("margen", 0) or 0
                     if prod_mg <= 0:
                         prod_mg = data.get("kardex_peps", {}).get(producto, {}).get("margen", 30) or 30
-                    precio_venta = round(costo * (1 + prod_mg / 100), 2)
+                    precio_venta = round(costo / (1 - prod_mg / 100), 2)
                 data = kardex_peps.agregar_entrada_peps(
                     data, producto, fecha, cantidad, costo, precio_venta
                 )
@@ -1312,7 +1312,7 @@ def pos():
                 pv = peps_info.get("precio_venta", 0) or 0
                 mg = peps_info.get("margen", 30) or 30
             if not pv:
-                pv = round(costo * (1 + mg / 100), 2)
+                pv = round(costo / (1 - mg / 100), 2)
 
             productos.append({
                 "nombre": nombre, "saldo": saldo,
@@ -1523,19 +1523,334 @@ def pos_venta():
         return redirect(url_for("pos"))
 
 
-@app.route("/pos/historial/eliminar/<int:venta_id>", methods=["POST"])
-def pos_historial_eliminar(venta_id):
+@app.route("/pos/anular/<ref>", methods=["POST"])
+def pos_anular(ref):
+    """Anula una venta POS: revierte kardex, diario, caja y marca como anulada."""
     data = load_data()
     historial = data.get("pos_historial", [])
+
+    venta = None
+    venta_idx = None
     for i, v in enumerate(historial):
-        if v.get("id") == venta_id:
-            ref = v.get("ref", "?")
-            del historial[i]
-            data["pos_historial"] = historial
-            data = audit_log(data, "pos_eliminar", f"Venta {ref} eliminada del historial")
-            save_data(data)
+        if v.get("ref") == ref:
+            venta = v
+            venta_idx = i
             break
+
+    if not venta:
+        return redirect(url_for("pos"))
+
+    try:
+        # ── 1. Revertir kardex y PEPS ──
+        for linea in venta.get("lineas", []):
+            nombre = linea["producto"]
+            cantidad_vendida = linea["cantidad"]
+
+            # Revertir kardex tradicional
+            if nombre in data.get("kardex", {}):
+                kx = data["kardex"][nombre]
+                if isinstance(kx, list):
+                    for j in range(len(kx) - 1, -1, -1):
+                        mov = kx[j]
+                        if (mov.get("tipo") == "salida" and
+                            mov.get("descripcion", "").startswith("Venta POS") and
+                            abs(mov.get("cantidad", 0) - cantidad_vendida) < 0.01):
+                            if j > 0:
+                                kx[j - 1]["saldo"] = kx[j - 1].get("saldo", 0) + cantidad_vendida
+                            del kx[j]
+                            break
+
+            # Revertir PEPS
+            peps = data.get("kardex_peps", {}).get(nombre, {})
+            if isinstance(peps, dict) and peps.get("lotes"):
+                for lote in reversed(peps["lotes"]):
+                    lote["cantidad_restante"] = lote.get("cantidad_restante", 0) + cantidad_vendida
+                    peps["stock_total"] = peps.get("stock_total", 0) + cantidad_vendida
+                    break
+                if peps.get("stock_total", 0) < 0:
+                    peps["stock_total"] = 0
+
+        # ── 2. Revertir asiento diario ──
+        ref_original = venta.get("ref", "")
+        diario = data.get("diario", [])
+        diario_id = None
+        for e in diario:
+            if e.get("ref") == ref_original:
+                diario_id = e.get("id")
+                break
+        data["diario"] = [e for e in diario if e.get("ref") != ref_original]
+
+        # ── 3. Revertir caja_movimientos ──
+        if diario_id:
+            caja = data.get("caja_movimientos", [])
+            data["caja_movimientos"] = [c for c in caja if c.get("ref_diario") != diario_id]
+
+        # ── 4. Revertir cuentas_cobrar ──
+        if diario_id:
+            cc = data.get("cuentas_cobrar", [])
+            data["cuentas_cobrar"] = [c for c in cc if c.get("ref_diario") != diario_id]
+
+        # ── 5. Crear asiento de reversión (para que el diario quede completo) ──
+        new_id = get_next_id(data, "diario")
+        total_venta = venta.get("total", 0)
+        total_costo = venta.get("costo", 0)
+        forma_pago = venta.get("forma_pago", "Efectivo")
+        cliente = venta.get("cliente", "")
+
+        cuenta_cobro = (
+            "1.1.01" if forma_pago == "Efectivo"
+            else ("1.1.02" if forma_pago == "Banco" else "1.1.03")
+        )
+        movimientos_reversion = [
+            {"cuenta": "4.1.01", "tipo": "Debe", "monto": total_venta},
+            {"cuenta": cuenta_cobro, "tipo": "Haber", "monto": total_venta},
+        ]
+        if total_costo > 0:
+            movimientos_reversion.append({"cuenta": "1.1.04", "tipo": "Debe", "monto": total_costo})
+            movimientos_reversion.append({"cuenta": "5.1", "tipo": "Haber", "monto": total_costo})
+
+        entry = {
+            "id": new_id,
+            "fecha": venta.get("fecha", ""),
+            "descripcion": f"ANULACIÓN Venta POS {ref} — {cliente}",
+            "ref": f"ANUL-{ref}",
+            "movimientos": movimientos_reversion,
+        }
+        data["diario"].append(entry)
+
+        # ── 6. Marcar como anulada en historial ──
+        data["pos_historial"][venta_idx]["anulada"] = True
+        data["pos_historial"][venta_idx]["motivo_anulacion"] = f"Anulada el {date.today().isoformat()}"
+
+        data = audit_log(data, "pos_anular", f"Venta {ref} anulada — C${total_venta:.2f}")
+        save_data(data)
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+
     return redirect(url_for("pos"))
+
+
+@app.route("/pos/editar/<ref>", methods=["GET", "POST"])
+def pos_editar(ref):
+    data = load_data()
+    historial = data.get("pos_historial", [])
+
+    # Buscar la venta por ref
+    venta = None
+    venta_idx = None
+    for i, v in enumerate(historial):
+        if v.get("ref") == ref:
+            venta = v
+            venta_idx = i
+            break
+
+    if not venta:
+        return redirect(url_for("pos"))
+
+    if request.method == "GET":
+        return render_template("pos_editar.html", venta=venta, productos=data.get("kardex_peps", {}))
+
+    # POST — Guardar edición
+    try:
+        fecha = request.form.get("fecha", venta["fecha"])
+        cliente = request.form.get("cliente", venta["cliente"])
+        forma_pago = request.form.get("forma_pago", venta["forma_pago"])
+
+        if forma_pago not in FORMAS_PAGO_VALIDAS:
+            forma_pago = "Efectivo"
+
+        productos_nombres = request.form.getlist("producto")
+        cantidades = request.form.getlist("cantidad")
+        precios = request.form.getlist("precio")
+
+        # ── 1. Revertir kardex y PEPS de la venta original ──
+        for linea in venta.get("lineas", []):
+            nombre = linea["producto"]
+            cantidad_vendida = linea["cantidad"]
+
+            # Revertir kardex tradicional: buscar salidas de esta venta y eliminarlas
+            if nombre in data.get("kardex", {}):
+                kx = data["kardex"][nombre]
+                if isinstance(kx, list):
+                    # Eliminar la última salida que coincida con la venta
+                    for j in range(len(kx) - 1, -1, -1):
+                        mov = kx[j]
+                        if (mov.get("tipo") == "salida" and
+                            mov.get("descripcion", "").startswith("Venta POS") and
+                            abs(mov.get("cantidad", 0) - cantidad_vendida) < 0.01):
+                            # Revertir saldo
+                            if j > 0:
+                                kx[j - 1]["saldo"] = kx[j - 1].get("saldo", 0) + cantidad_vendida
+                            del kx[j]
+                            break
+
+            # Revertir PEPS: devolver stock a lotes
+            peps = data.get("kardex_peps", {}).get(nombre, {})
+            if isinstance(peps, dict) and peps.get("lotes"):
+                cantidad_por_devolver = cantidad_vendida
+                for lote in reversed(peps["lotes"]):
+                    if cantidad_por_devolver <= 0:
+                        break
+                    lote["cantidad_restante"] = lote.get("cantidad_restante", 0) + cantidad_por_devolver
+                    peps["stock_total"] = peps.get("stock_total", 0) + cantidad_por_devolver
+                    break  # PEPS: devolver al último lote usado
+                if peps.get("stock_total", 0) < 0:
+                    peps["stock_total"] = 0
+
+        # ── 2. Revertir asiento diario original ──
+        ref_original = venta.get("ref", "")
+        diario = data.get("diario", [])
+        data["diario"] = [e for e in diario if e.get("ref") != ref_original]
+
+        # ── 3. Revertir caja_movimientos ──
+        caja = data.get("caja_movimientos", [])
+        data["caja_movimientos"] = [c for c in caja if c.get("ref_diario") != ref_original
+                                     and c.get("ref_diario") != diario_id_for_ref(diario, ref_original)]
+
+        # ── 4. Revertir cuentas_cobrar ──
+        cc = data.get("cuentas_cobrar", [])
+        data["cuentas_cobrar"] = [c for c in cc if c.get("ref_diario") != ref_original
+                                    and c.get("ref_diario") != diario_id_for_ref(diario, ref_original)]
+
+        # ── 5. Crear nueva venta ──
+        lineas = []
+        total_venta = 0
+        total_costo = 0
+
+        for i in range(len(productos_nombres)):
+            nombre = productos_nombres[i]
+            cantidad = round(float(cantidades[i])) if cantidades[i] else 0
+            precio = float(precios[i]) if precios[i] else 0
+
+            if nombre and cantidad > 0 and precio > 0:
+                subtotal = cantidad * precio
+
+                costo_u = 0
+                costo_total = 0
+                peps_disponible = (data.get("kardex_peps", {})
+                                   .get(nombre, {}).get("stock_total", 0))
+                if peps_disponible >= cantidad:
+                    try:
+                        data, costo_total, _ = kardex_peps.procesar_salida_peps(
+                            data, nombre, fecha, cantidad)
+                        costo_u = costo_total / cantidad if cantidad else 0
+                        if nombre in data.get("kardex", {}):
+                            kx = data["kardex"][nombre]
+                            if kx:
+                                kx[-1]["precio_venta"] = precio
+                    except Exception:
+                        import traceback
+                        traceback.print_exc()
+                        costo_total = 0
+                        costo_u = 0
+                else:
+                    if nombre in data.get("kardex", {}):
+                        k = data["kardex"][nombre]
+                        if isinstance(k, list) and k:
+                            costo_u = k[-1].get("costo", 0)
+                            saldo_anterior = k[-1]["saldo"] if k else 0
+                            nuevo_saldo = saldo_anterior - cantidad
+                            k.append({
+                                "fecha": fecha, "tipo": "salida",
+                                "cantidad": cantidad, "costo": costo_u,
+                                "precio_venta": precio,
+                                "total": cantidad * costo_u,
+                                "saldo": nuevo_saldo,
+                                "descripcion": f"Venta POS - {cliente}",
+                            })
+                        costo_total = cantidad * costo_u
+
+                lineas.append({
+                    "producto": nombre,
+                    "cantidad": cantidad,
+                    "precio_unitario": precio,
+                    "subtotal": subtotal,
+                    "costo_unitario": costo_u,
+                    "costo_total": costo_total,
+                })
+                total_venta += subtotal
+                total_costo += costo_total
+
+        if not lineas:
+            return redirect(url_for("pos"))
+
+        # ── 6. Crear nuevo asiento diario ──
+        diario_id = get_next_id(data, "diario")
+        cuenta_cobro = (
+            "1.1.01" if forma_pago == "Efectivo"
+            else ("1.1.02" if forma_pago == "Banco" else "1.1.03")
+        )
+        movimientos_diario = [
+            {"cuenta": cuenta_cobro, "tipo": "Debe", "monto": total_venta},
+            {"cuenta": "4.1.01", "tipo": "Haber", "monto": total_venta},
+        ]
+        if total_costo > 0:
+            movimientos_diario.append({"cuenta": "5.1", "tipo": "Debe", "monto": total_costo})
+            movimientos_diario.append({"cuenta": "1.1.04", "tipo": "Haber", "monto": total_costo})
+
+        entry = {
+            "id": diario_id,
+            "fecha": fecha,
+            "descripcion": f"Venta POS - {cliente} ({forma_pago})",
+            "ref": ref,
+            "movimientos": movimientos_diario,
+        }
+        data["diario"].append(entry)
+
+        # ── 7. Auxiliar de caja ──
+        if cuenta_cobro in ("1.1.01", "1.1.02"):
+            data.setdefault("caja_movimientos", [])
+            data["caja_movimientos"].append({
+                "id": get_next_id(data, "caja_movimientos"),
+                "fecha": fecha,
+                "descripcion": f"Venta POS - {cliente}",
+                "tipo": "Debe",
+                "monto": total_venta,
+                "cuenta": cuenta_cobro,
+                "ref_diario": diario_id,
+            })
+
+        # ── 8. Cuentas por cobrar ──
+        if cuenta_cobro == "1.1.03":
+            data.setdefault("cuentas_cobrar", [])
+            data["cuentas_cobrar"].append({
+                "id": get_next_id(data, "cuentas_cobrar"),
+                "fecha": fecha,
+                "descripcion": f"Venta POS - {cliente}",
+                "monto": total_venta,
+                "estado": "Pendiente",
+                "ref_diario": diario_id,
+            })
+
+        # ── 9. Actualizar historial POS ──
+        data["pos_historial"][venta_idx] = {
+            "ref": ref,
+            "fecha": fecha,
+            "cliente": cliente,
+            "forma_pago": forma_pago,
+            "lineas": lineas,
+            "total": total_venta,
+            "costo": total_costo,
+            "utilidad": total_venta - total_costo,
+        }
+
+        data = audit_log(data, "pos_editar", f"Venta {ref} editada — C${total_venta:.2f}")
+        save_data(data)
+        return redirect(url_for("pos"))
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return redirect(url_for("pos"))
+
+
+def diario_id_for_ref(diario, ref):
+    for e in diario:
+        if e.get("ref") == ref:
+            return e.get("id")
+    return None
 
 
 # ══════════════════════════════════════════════════════════════
