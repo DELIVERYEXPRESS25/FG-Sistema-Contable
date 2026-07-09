@@ -162,7 +162,7 @@
       <input type="text" name="nombre" placeholder="Nombre del producto" required style="padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;">
       <div style="display:flex;gap:8px;">
         <input type="number" name="precio_venta" id="pv-producto" step="0.01" min="0" placeholder="Precio venta C$" style="flex:1;padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;">
-        <input type="number" name="margen" id="margen-producto" step="0.1" min="0" placeholder="Margen %" value="30" style="width:80px;padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;">
+        <input type="number" name="margen" id="margen-producto" step="0.1" min="0" placeholder="Margen %" value="{{ margen_default }}" style="width:80px;padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;">
       </div>
       <div style="font-size:10px;color:var(--text-dim);display:flex;gap:8px;align-items:center;">
         <label style="display:flex;align-items:center;gap:4px;cursor:pointer;">
@@ -190,9 +190,14 @@
         <input type="date" name="fecha" required style="padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;flex:1;min-width:100px;">
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
-        <input type="number" name="cantidad" placeholder="Cant." min="1" required style="width:80px;padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;">
+        <input type="number" name="cantidad" id="mov-cantidad" placeholder="Cant." min="1" required style="width:80px;padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;">
         <input type="number" name="costo" id="mov-costo" step="0.01" min="0" placeholder="Costo C$" style="width:100px;padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;">
+        <input type="number" name="margen" id="mov-margen" step="0.1" min="0" max="99" placeholder="Margen %" value="{{ margen_default }}" style="width:70px;padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;">
         <input type="number" name="precio_venta" id="mov-pv" step="0.01" min="0" placeholder="Venta C$" style="width:100px;padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;">
+        <div style="display:flex;align-items:center;gap:4px;">
+          <span style="font-size:11px;color:var(--text-dim);">=</span>
+          <span id="mov-total" style="font-size:13px;font-weight:600;color:var(--green);min-width:70px;">C$ 0.00</span>
+        </div>
       </div>
       <div id="mov-campos-venta" style="display:none;gap:8px;flex-wrap:wrap;border-top:1px solid var(--card-border);padding-top:8px;margin-top:2px;">
         <select name="forma_pago" style="flex:1;min-width:100px;padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;">
@@ -572,27 +577,56 @@ if (movTipo) {
 const selProducto = document.querySelector('#form-mov select[name="producto"]');
 const inpPV = document.getElementById('mov-pv');
 const inpCosto = document.getElementById('mov-costo');
+const inpMargen = document.getElementById('mov-margen');
+const inpCantidad = document.getElementById('mov-cantidad');
+const movTotal = document.getElementById('mov-total');
 const productosData = {{ productos_data|tojson }};
+const margenDefault = {{ margen_default }};
+
+function calcPrecioVenta() {
+  const costo = parseFloat(inpCosto?.value) || 0;
+  const margen = parseFloat(inpMargen?.value) || margenDefault;
+  if (costo > 0 && margen > 0 && margen < 100) {
+    const pv = costo / (1 - margen / 100);
+    inpPV.value = pv.toFixed(2);
+  }
+  calcTotal();
+}
+
+function calcTotal() {
+  const cant = parseFloat(inpCantidad?.value) || 0;
+  const pv = parseFloat(inpPV?.value) || 0;
+  const total = cant * pv;
+  movTotal.textContent = 'C$ ' + total.toFixed(2);
+  movTotal.style.color = total > 0 ? 'var(--green)' : 'var(--text-dim)';
+}
+
 if (selProducto && productosData) {
   selProducto.addEventListener('change', function() {
     const prod = productosData[this.value];
-    if (prod && prod.precio_venta > 0) {
-      inpPV.value = prod.precio_venta;
-      inpPV.placeholder = 'Venta C$ (auto)';
-    } else {
-      inpPV.value = '';
-      inpPV.placeholder = 'Venta C$';
+    if (prod) {
+      // Auto-completar costo promedio
+      if (prod.costo_promedio > 0) {
+        inpCosto.value = prod.costo_promedio;
+      }
+      // SIEMPRE usar el margen configurado
+      inpMargen.value = margenDefault;
+      // Auto-completar precio venta
+      if (prod.precio_venta > 0) {
+        inpPV.value = prod.precio_venta;
+      } else {
+        inpPV.value = '';
+      }
+      calcPrecioVenta();
     }
   });
-  // Also auto-fill from margen if user enters cost
-  inpCosto?.addEventListener('input', function() {
-    const prod = productosData[selProducto.value];
-    if (prod && prod.margen > 0 && this.value > 0) {
-      const calc = parseFloat(this.value) / (1 - prod.margen / 100);
-      inpPV.value = calc.toFixed(2);
-      inpPV.placeholder = 'Venta C$ (auto)';
-    }
-  });
+
+  inpCosto?.addEventListener('input', calcPrecioVenta);
+  inpMargen?.addEventListener('input', calcPrecioVenta);
+  inpCantidad?.addEventListener('input', calcTotal);
+  inpPV?.addEventListener('input', calcTotal);
 }
+
+calcTotal();
 </script>
 {% endblock %}

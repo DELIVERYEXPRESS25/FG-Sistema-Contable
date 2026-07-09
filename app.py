@@ -791,23 +791,27 @@ def kardex():
         productos_list = list(data.get("kardex", {}).keys())
 
         # Datos de productos para auto-completar en JS
+        margen_default = data.get("configuracion", {}).get("margen_default", 30)
         productos_data_dict = {}
         for p in productos_list:
             prod_info = data.get("productos", {}).get(p, {})
             if isinstance(prod_info, dict):
                 productos_data_dict[p] = {
                     "precio_venta": prod_info.get("precio_venta", 0),
-                    "margen": prod_info.get("margen", 30),
+                    "margen": prod_info.get("margen", margen_default),
+                    "costo_promedio": prod_info.get("costo_promedio", 0),
                 }
             else:
-                productos_data_dict[p] = {"precio_venta": 0, "margen": 30}
+                productos_data_dict[p] = {"precio_venta": 0, "margen": margen_default, "costo_promedio": 0}
             # Fallback a kardex_peps
             peps_info = data.get("kardex_peps", {}).get(p, {})
             if isinstance(peps_info, dict):
                 if not productos_data_dict[p]["precio_venta"]:
                     productos_data_dict[p]["precio_venta"] = peps_info.get("precio_venta", 0)
                 if not productos_data_dict[p]["margen"]:
-                    productos_data_dict[p]["margen"] = peps_info.get("margen", 30)
+                    productos_data_dict[p]["margen"] = peps_info.get("margen", margen_default)
+                if not productos_data_dict[p]["costo_promedio"]:
+                    productos_data_dict[p]["costo_promedio"] = peps_info.get("costo_promedio", 0)
 
         return render_template(
             "kardex.html",
@@ -815,6 +819,7 @@ def kardex():
             productos=productos_list,
             reporte_peps=reporte_peps,
             productos_data=productos_data_dict,
+            margen_default=data.get("configuracion", {}).get("margen_default", 30),
         )
 
     except Exception as e:
@@ -1195,9 +1200,21 @@ def auxiliar_diario():
 @app.route("/ajustes")
 def ajustes():
     data = load_data()
+    margen_config = data.get("configuracion", {}).get("margen_default", 30)
     return render_template(
-        "ajustes.html", ajustes=data.get("ajustes", []), cuentas=data["cuentas"]
+        "ajustes.html", ajustes=data.get("ajustes", []), cuentas=data["cuentas"], margen_config=margen_config
     )
+
+
+@app.route("/ajustes/guardar_margen", methods=["POST"])
+def guardar_margen():
+    data = load_data()
+    margen = float(request.form.get("margen", 30))
+    if margen < 0 or margen >= 100:
+        margen = 30
+    data.setdefault("configuracion", {})["margen_default"] = margen
+    save_data(data)
+    return redirect(url_for("ajustes") + "?ok=margen")
 
 
 @app.route("/ajustes/agregar", methods=["POST"])
@@ -2660,6 +2677,24 @@ def api_copia_db():
         resp.headers["Content-Type"] = "application/octet-stream"
         return resp
     return jsonify({"ok": False, "error": "Base de datos no encontrada"}), 404
+
+
+@app.route("/api/importar_json", methods=["POST"])
+def api_importar_json():
+    """Importa un JSON de backup y reemplaza los datos actuales"""
+    archivo = request.files.get("archivo")
+    if not archivo:
+        return jsonify({"ok": False, "error": "No se recibió archivo"})
+    try:
+        data = json.loads(archivo.read().decode("utf-8"))
+        required = ["cuentas", "diario", "productos", "kardex", "kardex_peps", "pos_historial"]
+        for key in required:
+            if key not in data:
+                data[key] = {} if key in ("kardex", "kardex_peps", "productos", "cuentas") else []
+        save_data(data)
+        return jsonify({"ok": True, "message": f"Importado: {len(data.get('diario', []))} asientos, {len(data.get('pos_historial', []))} ventas"})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 
 @app.route("/api/importar_db", methods=["POST"])

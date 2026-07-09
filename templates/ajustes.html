@@ -12,10 +12,36 @@
   ⚠️ El asiento no está balanceado: el total del Debe debe ser igual al total del Haber, y debe tener al menos un movimiento de cada tipo.
 </div>
 {% endif %}
+{% if request.args.get('ok') == 'margen' %}
+<div style="background:rgba(46,204,113,0.12);border:1px solid rgba(46,204,113,0.3);border-radius:10px;padding:12px 18px;margin-bottom:18px;color:var(--green);font-weight:600;">
+  ✓ Porcentaje de margen actualizado correctamente.
+</div>
+{% endif %}
 <div class="page-header">
   <div>
     <h2>📝 Asientos de Ajuste</h2>
     <div class="subtitle">Correcciones y ajustes periódicos — Se incluyen automáticamente en el Mayor y Estados Financieros</div>
+  </div>
+</div>
+
+<!-- CONFIGURACIÓN DE MARGEN -->
+<div class="card" style="border-color:rgba(124,92,252,0.3);">
+  <div class="card-title"><span class="icon">⚙️</span> Configuración — Margen de Ganancia</div>
+  <form method="POST" action="/ajustes/guardar_margen" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+    <div class="form-group" style="max-width:200px;">
+      <label>Margen predeterminado (%)</label>
+      <input type="number" name="margen" id="cfg-margen" step="0.1" min="0" max="99" value="{{ margen_config }}" style="width:100%;padding:8px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:13px;">
+    </div>
+    <div class="form-group" style="flex:1;min-width:200px;">
+      <label>Vista previa</label>
+      <div style="padding:8px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--green);font-size:13px;">
+        pv = costo / (1 − <span id="prev-margen">{{ margen_config }}</span>/100) = C$ <span id="prev-pv">0.00</span>
+      </div>
+    </div>
+    <button type="submit" class="btn btn-primary" style="background:linear-gradient(135deg,#7c5cfc,#a78bfa);box-shadow:0 3px 12px rgba(124,92,252,0.3);height:38px;">💾 Guardar</button>
+  </form>
+  <div style="margin-top:8px;font-size:11px;color:var(--text-dim);">
+    Este porcentaje se usa automáticamente en el Kardex para calcular el precio de venta de nuevos productos.
   </div>
 </div>
 
@@ -104,6 +130,24 @@
 {% block scripts %}
 <script>
 document.querySelector('input[name="fecha"]').valueAsDate = new Date();
+
+// Preview de margen
+const cfgMargen = document.getElementById('cfg-margen');
+const prevMargen = document.getElementById('prev-margen');
+const prevPV = document.getElementById('prev-pv');
+if (cfgMargen) {
+  cfgMargen.addEventListener('input', function() {
+    const m = parseFloat(this.value) || 0;
+    prevMargen.textContent = m;
+    if (m > 0 && m < 100) {
+      const pv = 100 / (1 - m / 100);
+      prevPV.textContent = pv.toFixed(2);
+    } else {
+      prevPV.textContent = '0.00';
+    }
+  });
+  cfgMargen.dispatchEvent(new Event('input'));
+}
 
 function addAjusteLine() {
   const container = document.getElementById('ajustLines');
