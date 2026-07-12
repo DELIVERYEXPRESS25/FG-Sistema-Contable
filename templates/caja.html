@@ -68,7 +68,7 @@
       </tr>
     </thead>
     <tbody>
-      {% set saldo_run = namespace(val=0) %}
+      {% set saldo_run = namespace(val=saldo_inicial) %}
       {% for mov in movimientos %}
         {% if mov.tipo == 'Debe' %}
           {% set saldo_run.val = saldo_run.val + mov.monto %}

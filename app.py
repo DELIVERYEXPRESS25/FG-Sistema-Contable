@@ -1103,9 +1103,20 @@ def caja():
             saldo -= m.get("monto", 0)
 
     page = request.args.get("page", 1, type=int)
+    per_page = 50
+    start = (page - 1) * per_page
+
+    saldo_inicial = 0
+    for m in movs[:start]:
+        if m.get("tipo") == "Debe":
+            saldo_inicial += m.get("monto", 0)
+        else:
+            saldo_inicial -= m.get("monto", 0)
+
     movs_pag, page, total_pages, total = _paginar(movs, page)
     return render_template("caja.html", movimientos=movs_pag, saldo=saldo,
-                           page=page, total_pages=total_pages, total=total)
+                           page=page, total_pages=total_pages, total=total,
+                           saldo_inicial=saldo_inicial)
 
 
 # ── AUXILIAR DIARIO ──
