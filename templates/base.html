@@ -320,55 +320,30 @@ canvas { max-width: 100%; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 3px; }
 
-/* Botones de base de datos en sidebar */
-.db-buttons {
-  display: flex;
-  gap: 6px;
-  justify-content: center;
-  flex-wrap: wrap;
-  padding: 8px 0;
-  align-items: center;
-}
-
-#dbButtonsGroup {
-  display: none;
-  gap: 6px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.db-buttons .btn-outline {
-  width: 36px;
-  height: 36px;
+/* Botones de herramientas en sidebar */
+#dbButtonsGroup .btn-outline,
+#dbButtonsGroup .btn-apagar {
+  width: 32px;
+  height: 32px;
+  font-size: 14px;
   padding: 0;
-  font-size: 16px;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.db-buttons .btn-outline:hover {
+#dbButtonsGroup .btn-outline:hover {
   background: rgba(79,140,255,0.15);
   color: var(--accent);
   transform: scale(1.05);
 }
 
-.db-buttons .btn-apagar {
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  font-size: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 /* Tooltips para los botones */
-.db-buttons button[title] {
+#dbButtonsGroup button[title] {
   position: relative;
 }
 
-.db-buttons button[title]:hover::after {
+#dbButtonsGroup button[title]:hover::after {
   content: attr(title);
   position: absolute;
   bottom: 120%;
@@ -625,24 +600,32 @@ canvas { max-width: 100%; }
   </div><!-- fin sidebar-nav -->
 
 <div class="sidebar-bottom">
-  <div style="display:flex;align-items:center;gap:8px;padding:4px 12px 8px;">
+  <div style="padding:4px 12px 8px;">
     {% if auth_enabled %}
-    <span style="font-size:12px;color:var(--text-dim);">👤 {{ g.get('user', session.get('user', 'invitado')) }}</span>
-    <a href="#" onclick="document.getElementById('modalPassword').classList.add('show');return false;" style="font-size:11px;color:var(--accent);text-decoration:none;">🔑</a>
-    <a href="/logout" style="font-size:11px;color:var(--red);text-decoration:none;margin-left:auto;">🔓 Salir</a>
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;">
+      <span style="font-size:12px;color:var(--text-dim);flex:1;">👤 {{ g.get('user', session.get('user', 'invitado')) }}</span>
+      <button id="btnNotificaciones" onclick="toggleNotificaciones()" style="background:none;border:none;cursor:pointer;font-size:15px;padding:2px;line-height:1;position:relative;" title="Notificaciones">
+        🔔
+        <span id="notifBadge" style="display:none;position:absolute;top:-4px;right:-6px;background:var(--red);color:#fff;font-size:8px;font-weight:700;border-radius:50%;min-width:13px;height:13px;text-align:center;line-height:13px;"></span>
+      </button>
+      <button id="themeToggle" style="background:none;border:none;cursor:pointer;font-size:15px;padding:2px;line-height:1;" title="Cambiar tema">🌙</button>
+      <a href="#" onclick="document.getElementById('modalPassword').classList.add('show');return false;" style="font-size:13px;color:var(--accent);text-decoration:none;" title="Cambiar contraseña">🔑</a>
+      <a href="/logout" style="font-size:11px;color:var(--red);text-decoration:none;font-weight:600;" title="Cerrar sesión">Salir</a>
+    </div>
     {% endif %}
-    <button id="themeToggle" style="background:none;border:none;cursor:pointer;font-size:16px;padding:2px;line-height:1;" title="Cambiar tema">🌙</button>
-  </div>
-  <div class="db-buttons">
-    <button class="btn-outline btn-sm" id="btnToggleDB" onclick="toggleDBButtons()" title="📦 Mostrar/ocultar herramientas">📦</button>
-    <div id="dbButtonsGroup" style="display:none;">
-      <button class="btn-outline btn-sm" id="btnBackupJSON" title="💾 Backup JSON">💾</button>
-      <button class="btn-outline btn-sm" id="btnCopiaDB" title="💿 Copia DB">💿</button>
-      <button class="btn-outline btn-sm" id="btnImportarDB" title="🪣 Importar DB">🪣</button>
-      <button class="btn-outline btn-sm" id="btnVerDB" title="🔍 Ver DB">🔍</button>
-      <button class="btn-outline btn-sm" id="btnRestaurar" title="📁 Restaurar">📁</button>
-      <button class="btn-outline btn-sm" id="btnBorrarTodo" title="🗑️ Borrar Todo">🗑️</button>
-      <button class="btn-apagar" onclick="document.getElementById('modalApagar').classList.add('show')" title="🔴 Apagar">🔴</button>
+    <div style="display:flex;justify-content:center;">
+      <button class="btn-outline btn-sm" id="btnToggleDB" onclick="toggleDBButtons()" title="📦 Herramientas" style="font-size:11px;padding:4px 12px;">📦 Herramientas</button>
+    </div>
+    <div id="dbButtonsGroup" style="display:none;margin-top:8px;">
+      <div style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;">
+        <button class="btn-outline btn-sm" id="btnBackupJSON" title="💾 Backup JSON">💾</button>
+        <button class="btn-outline btn-sm" id="btnCopiaDB" title="💿 Copia DB">💿</button>
+        <button class="btn-outline btn-sm" id="btnImportarDB" title="🪣 Importar DB">🪣</button>
+        <button class="btn-outline btn-sm" id="btnVerDB" title="🔍 Ver DB">🔍</button>
+        <button class="btn-outline btn-sm" id="btnRestaurar" title="📁 Restaurar">📁</button>
+        <button class="btn-outline btn-sm" id="btnBorrarTodo" title="🗑️ Borrar Todo">🗑️</button>
+        <button class="btn-apagar" onclick="document.getElementById('modalApagar').classList.add('show')" title="🔴 Apagar">🔴</button>
+      </div>
     </div>
   </div>
 </div>
@@ -689,6 +672,19 @@ canvas { max-width: 100%; }
 </div>
 {% endif %}
 
+<!-- MODAL NOTIFICACIONES -->
+<div class="modal-overlay" id="modalNotificaciones" style="display:none;">
+  <div class="modal-box" style="max-width:380px;max-height:70vh;overflow-y:auto;position:fixed;top:60px;right:20px;left:auto;bottom:auto;transform:none;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <h3 style="color:var(--text-bright);font-size:15px;">🔔 Notificaciones</h3>
+      <button onclick="document.getElementById('modalNotificaciones').style.display='none'" style="background:none;border:none;color:var(--text-dim);font-size:18px;cursor:pointer;">✕</button>
+    </div>
+    <div id="notifLista" style="font-size:12px;">
+      <p style="color:var(--text-dim);text-align:center;padding:20px;">Cargando...</p>
+    </div>
+  </div>
+</div>
+
 <!-- TOASTS -->
 {% set msgs = {'password_actualizada': '✅ Contraseña actualizada correctamente',
                'password_actual_incorrecta': '❌ La contraseña actual no es correcta',
@@ -731,13 +727,67 @@ function toggleDBButtons() {
     const group = document.getElementById('dbButtonsGroup');
     const btn = document.getElementById('btnToggleDB');
     if (group.style.display === 'none') {
-      group.style.display = 'flex';
+      group.style.display = 'block';
       btn.style.background = 'rgba(79,140,255,0.2)';
     } else {
       group.style.display = 'none';
       btn.style.background = '';
     }
 }
+function toggleNotificaciones() {
+    const modal = document.getElementById('modalNotificaciones');
+    if (modal.style.display === 'none') {
+      modal.style.display = 'flex';
+      cargarNotificaciones();
+    } else {
+      modal.style.display = 'none';
+    }
+}
+function cargarNotificaciones() {
+    fetch('/api/notificaciones')
+      .then(r => r.json())
+      .then(data => {
+        const lista = document.getElementById('notifLista');
+        const badge = document.getElementById('notifBadge');
+        if (!data.notificaciones || data.notificaciones.length === 0) {
+          lista.innerHTML = '<p style="color:var(--text-dim);text-align:center;padding:20px;">Sin notificaciones</p>';
+          badge.style.display = 'none';
+          return;
+        }
+        badge.textContent = data.notificaciones.length;
+        badge.style.display = 'block';
+        let html = '';
+        data.notificaciones.forEach(n => {
+          const color = n.tipo === 'critico' ? 'var(--red)' : 'var(--yellow)';
+          const icono = n.tipo === 'critico' ? '🔴' : '🟡';
+          html += '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-bottom:1px solid var(--card-border);">';
+          html += '<span>' + icono + '</span>';
+          html += '<span style="flex:1;color:var(--text-bright);">' + n.mensaje + '</span>';
+          html += '<span style="color:' + color + ';font-weight:600;font-size:11px;">' + n.valor + '</span>';
+          html += '</div>';
+        });
+        lista.innerHTML = html;
+      })
+      .catch(() => {
+        document.getElementById('notifLista').innerHTML = '<p style="color:var(--text-dim);text-align:center;padding:20px;">Error al cargar</p>';
+      });
+}
+function actualizarBadgeNotificaciones() {
+    fetch('/api/notificaciones')
+      .then(r => r.json())
+      .then(data => {
+        const badge = document.getElementById('notifBadge');
+        const count = data.notificaciones ? data.notificaciones.length : 0;
+        if (count > 0) {
+          badge.textContent = count;
+          badge.style.display = 'block';
+        } else {
+          badge.style.display = 'none';
+        }
+      });
+}
+setTimeout(actualizarBadgeNotificaciones, 1000);
+setInterval(actualizarBadgeNotificaciones, 300000);
 // cerrar sidebar al hacer clic en nav (mobile)
 document.querySelectorAll('.nav-item').forEach(a => {
     a.addEventListener('click', () => {

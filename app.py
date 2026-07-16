@@ -408,7 +408,6 @@ def index():
     gastos_mes = get_gastos_por_mes(data)
     _, _, _, _, utilidad = calcular_estado_resultados(data)
     mayor = calcular_mayor(data)
-    # Total activos / pasivos para resumen
     total_activo = 0
     total_pasivo = 0
     for c, info in data["cuentas"].items():
@@ -420,6 +419,7 @@ def index():
             total_activo += saldo
         elif info["tipo"] == "Pasivo":
             total_pasivo += saldo
+
     return render_template(
         "index.html",
         ventas_dia=ventas_dia,
@@ -1314,6 +1314,44 @@ def api_stock():
     return jsonify(stock)
 
 
+@app.route("/api/notificaciones")
+def api_notificaciones():
+    data = load_data()
+    notificaciones = []
+
+    # Stock bajo
+    for nombre, peps in data.get("kardex_peps", {}).items():
+        if isinstance(peps, dict):
+            stock = peps.get("stock_total", 0)
+            if stock <= 0:
+                notificaciones.append({
+                    "tipo": "critico",
+                    "mensaje": f"Sin stock: {nombre}",
+                    "valor": f"{stock} unid.",
+                    "modulo": "kardex",
+                })
+            elif stock <= 5:
+                notificaciones.append({
+                    "tipo": "advertencia",
+                    "mensaje": f"Stock bajo: {nombre}",
+                    "valor": f"{stock} unid.",
+                    "modulo": "kardex",
+                })
+
+    # Cuentas por cobrar pendientes
+    for cc in data.get("cuentas_cobrar", []):
+        if cc.get("estado") == "Pendiente":
+            notificaciones.append({
+                "tipo": "advertencia",
+                "mensaje": f"Cobro pendiente: {cc.get('descripcion', '')}",
+                "valor": f"C$ {cc.get('monto', 0):.2f}",
+                "modulo": "cobrar",
+            })
+
+    notificaciones.sort(key=lambda x: (0 if x["tipo"] == "critico" else 1))
+    return jsonify({"notificaciones": notificaciones})
+
+
 # ── VENTAS POS ──
 @app.route("/pos")
 def pos():
@@ -1740,17 +1778,18 @@ def pos_editar(ref):
         # ── 2. Revertir asiento diario original ──
         ref_original = venta.get("ref", "")
         diario = data.get("diario", [])
+        diario_original_id = diario_id_for_ref(diario, ref_original)
         data["diario"] = [e for e in diario if e.get("ref") != ref_original]
 
         # ── 3. Revertir caja_movimientos ──
         caja = data.get("caja_movimientos", [])
         data["caja_movimientos"] = [c for c in caja if c.get("ref_diario") != ref_original
-                                     and c.get("ref_diario") != diario_id_for_ref(diario, ref_original)]
+                                     and c.get("ref_diario") != diario_original_id]
 
         # ── 4. Revertir cuentas_cobrar ──
         cc = data.get("cuentas_cobrar", [])
         data["cuentas_cobrar"] = [c for c in cc if c.get("ref_diario") != ref_original
-                                    and c.get("ref_diario") != diario_id_for_ref(diario, ref_original)]
+                                    and c.get("ref_diario") != diario_original_id]
 
         # ── 5. Crear nueva venta ──
         lineas = []
