@@ -327,6 +327,14 @@ canvas { max-width: 100%; }
   justify-content: center;
   flex-wrap: wrap;
   padding: 8px 0;
+  align-items: center;
+}
+
+#dbButtonsGroup {
+  display: none;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .db-buttons .btn-outline {
@@ -626,13 +634,16 @@ canvas { max-width: 100%; }
     <button id="themeToggle" style="background:none;border:none;cursor:pointer;font-size:16px;padding:2px;line-height:1;" title="Cambiar tema">🌙</button>
   </div>
   <div class="db-buttons">
-    <button class="btn-outline btn-sm" id="btnBackupJSON" title="💾 Backup JSON">💾</button>
-    <button class="btn-outline btn-sm" id="btnCopiaDB" title="💿 Copia DB">💿</button>
-    <button class="btn-outline btn-sm" id="btnImportarDB" title="🪣 Importar DB">🪣</button>
-    <button class="btn-outline btn-sm" id="btnVerDB" title="🔍 Ver DB">🔍</button>
-    <button class="btn-outline btn-sm" id="btnRestaurar" title="📁 Restaurar">📁</button>
-    <button class="btn-outline btn-sm" id="btnBorrarTodo" title="🗑️ Borrar Todo">🗑️</button>
-    <button class="btn-apagar" onclick="document.getElementById('modalApagar').classList.add('show')" title="🔴 Apagar">🔴</button>
+    <button class="btn-outline btn-sm" id="btnToggleDB" onclick="toggleDBButtons()" title="📦 Mostrar/ocultar herramientas">📦</button>
+    <div id="dbButtonsGroup" style="display:none;">
+      <button class="btn-outline btn-sm" id="btnBackupJSON" title="💾 Backup JSON">💾</button>
+      <button class="btn-outline btn-sm" id="btnCopiaDB" title="💿 Copia DB">💿</button>
+      <button class="btn-outline btn-sm" id="btnImportarDB" title="🪣 Importar DB">🪣</button>
+      <button class="btn-outline btn-sm" id="btnVerDB" title="🔍 Ver DB">🔍</button>
+      <button class="btn-outline btn-sm" id="btnRestaurar" title="📁 Restaurar">📁</button>
+      <button class="btn-outline btn-sm" id="btnBorrarTodo" title="🗑️ Borrar Todo">🗑️</button>
+      <button class="btn-apagar" onclick="document.getElementById('modalApagar').classList.add('show')" title="🔴 Apagar">🔴</button>
+    </div>
   </div>
 </div>
 </aside>
@@ -715,6 +726,17 @@ function toggleSidebar() {
     document.querySelector('.sidebar').classList.toggle('open');
     document.getElementById('sideOverlay').classList.toggle('show');
     document.getElementById('hamburger').classList.toggle('active');
+}
+function toggleDBButtons() {
+    const group = document.getElementById('dbButtonsGroup');
+    const btn = document.getElementById('btnToggleDB');
+    if (group.style.display === 'none') {
+      group.style.display = 'flex';
+      btn.style.background = 'rgba(79,140,255,0.2)';
+    } else {
+      group.style.display = 'none';
+      btn.style.background = '';
+    }
 }
 // cerrar sidebar al hacer clic en nav (mobile)
 document.querySelectorAll('.nav-item').forEach(a => {

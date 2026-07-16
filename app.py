@@ -242,11 +242,14 @@ def load_data():
         "ajustes": [],
         "diario": [],
         "kardex": {},
+        "kardex_peps": {},
+        "productos": {},
         "cuentas": {},
         "gastos_comercializacion": [],
         "cierres_mensuales": [],
         "auditoria": [],
         "_config": {},
+        "configuracion": {},
     }
     for key, default in _defaults.items():
         if key not in data:
@@ -855,27 +858,36 @@ def agregar_producto_kardex():
         data["productos"] = {}
 
     nombre = request.form.get("nombre", "").strip()
-    precio_venta = float(request.form.get("precio_venta", 0))
-    margen = float(request.form.get("margen", 30))
+    try:
+        precio_venta = float(request.form.get("precio_venta", 0) or 0)
+        margen = float(request.form.get("margen", 30) or 30)
+    except (ValueError, TypeError):
+        precio_venta = 0
+        margen = 30
 
-    if nombre and nombre not in data["kardex"]:
-        data["kardex"][nombre] = []
+    if not nombre:
+        return redirect(url_for("kardex"))
 
-        data["productos"][nombre] = {
-            "nombre": nombre,
-            "stock": 0,
-            "costo_promedio": 0,
-            "precio_venta": precio_venta,
-            "margen": margen,
-        }
+    if nombre in data["kardex"]:
+        return redirect(url_for("kardex") + "?error=producto_duplicado")
 
-        data["kardex_peps"][nombre] = {
-            "lotes": [],
-            "stock_total": 0,
-            "costo_promedio": 0,
-            "precio_venta": precio_venta,
-            "margen": margen,
-        }
+    data["kardex"][nombre] = []
+
+    data["productos"][nombre] = {
+        "nombre": nombre,
+        "stock": 0,
+        "costo_promedio": 0,
+        "precio_venta": precio_venta,
+        "margen": margen,
+    }
+
+    data["kardex_peps"][nombre] = {
+        "lotes": [],
+        "stock_total": 0,
+        "costo_promedio": 0,
+        "precio_venta": precio_venta,
+        "margen": margen,
+    }
 
     save_data(data)
     return redirect(url_for("kardex"))
@@ -1020,10 +1032,8 @@ def agregar_mov_kardex():
                 data = _reconstruir_peps(data, producto)
 
         except ValueError as e:
-            # Errores controlados (ej: stock insuficiente)
             print(f"Error controlado: {e}")
-            # Por ahora solo redirigir, podrías agregar flash messages
-            return redirect(url_for("kardex"))
+            return redirect(url_for("kardex") + "?error=" + str(e).replace(" ", "_"))
 
         except Exception as e:
             # Errores inesperados
@@ -2480,12 +2490,16 @@ def editar_movimiento_kardex():
     """Edita un movimiento individual del Kardex (fecha, descripcion, cantidad, costo)."""
     data = load_data()
     producto = request.form.get("producto", "").strip()
-    idx = int(request.form.get("idx", -1))
+    try:
+        idx = int(request.form.get("idx", -1) or -1)
+    except (ValueError, TypeError):
+        return redirect(url_for("kardex"))
     k = data["kardex"].get(producto, [])
     if 0 <= idx < len(k):
         mov = k[idx]
         mov["fecha"] = request.form.get("fecha", mov.get("fecha", ""))
         mov["descripcion"] = request.form.get("descripcion", mov.get("descripcion", ""))
+        nuevo_pv = mov.get("precio_venta", 0)
         try:
             nueva_cant = int(
                 float(request.form.get("cantidad", mov.get("cantidad", 0)))
@@ -2500,7 +2514,6 @@ def editar_movimiento_kardex():
             pass
         
         data["kardex"][producto] = k
-        # Sincronizar precio_venta al producto y kardex_peps
         if nuevo_pv > 0:
             peps = data.get("kardex_peps", {}).get(producto, {})
             if peps:
@@ -2508,7 +2521,6 @@ def editar_movimiento_kardex():
             prod = data.get("productos", {}).get(producto, {})
             if isinstance(prod, dict):
                 prod["precio_venta"] = nuevo_pv
-        # Recalcular PEPS desde cero para este producto
         data = _reconstruir_peps(data, producto)
         save_data(data)
     return redirect(url_for("kardex"))
@@ -2519,12 +2531,14 @@ def eliminar_movimiento_kardex():
     """Elimina un movimiento individual y recalcula saldos."""
     data = load_data()
     producto = request.form.get("producto", "").strip()
-    idx = int(request.form.get("idx", -1))
+    try:
+        idx = int(request.form.get("idx", -1) or -1)
+    except (ValueError, TypeError):
+        return redirect(url_for("kardex"))
     k = data["kardex"].get(producto, [])
     if 0 <= idx < len(k):
         k.pop(idx)
         data["kardex"][producto] = k
-        # Recalcular PEPS completamente
         data = _reconstruir_peps(data, producto)
         save_data(data)
     return redirect(url_for("kardex"))
