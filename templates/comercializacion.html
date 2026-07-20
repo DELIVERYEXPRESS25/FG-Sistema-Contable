@@ -125,6 +125,7 @@
   </div>
 
   {% if movimientos %}
+  <div style="overflow-x:auto;">
   <table>
     <thead>
       <tr>
@@ -160,6 +161,7 @@
     {% endfor %}
     </tbody>
   </table>
+  </div>
   <!-- Totales de tabla -->
   {% set td = namespace(v=0) %}
   {% set th = namespace(v=0) %}
@@ -181,6 +183,7 @@
 <!-- ═══════ CATÁLOGO CUENTAS 6xxx ═══════ -->
 <div class="card">
   <div class="card-title"><span class="icon">📂</span> Catálogo de Cuentas de Comercialización</div>
+  <div style="overflow-x:auto;">
   <table>
     <thead>
       <tr><th>Código</th><th>Nombre</th><th style="text-align:right;">Debe C$</th><th style="text-align:right;">Haber C$</th><th style="text-align:right;">Saldo C$</th></tr>
@@ -206,7 +209,7 @@
     </tr>
     </tbody>
   </table>
-</div>
+  </div>
 {% endblock %}
 
 {% block scripts %}

@@ -97,6 +97,7 @@
 <div class="card">
   <div class="card-title"><span class="icon">📋</span> Historial de Ajustes ({{ ajustes|length }})</div>
   {% if ajustes|length > 0 %}
+  <div style="overflow-x:auto;">
   <table>
     <thead>
       <tr><th>#</th><th>Fecha</th><th>Descripción</th><th>Cuenta</th><th style="text-align:right;">Debe C$</th><th style="text-align:right;">Haber C$</th></tr>
@@ -117,6 +118,7 @@
       {% endfor %}
     </tbody>
   </table>
+  </div>
   {% else %}
   <p style="color:var(--text-dim);text-align:center;padding:40px;">
     Los ajustes se reflejan automáticamente en el <strong>Mayor</strong>, <strong>Balanza</strong> y <strong>Estados Financieros</strong>.

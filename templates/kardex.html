@@ -156,7 +156,7 @@
 
 <!-- ═══ FORMULARIOS COMPACTOS ═══ -->
 <div style="display:flex;gap:12px;margin-bottom:22px;flex-wrap:wrap;">
-  <div class="card" style="flex:1;min-width:280px;border-color:rgba(79,140,255,0.25);">
+  <div class="card" style="flex:1;min-width:0;border-color:rgba(79,140,255,0.25);">
     <div class="card-title" style="font-size:13px;"><span class="icon">➕</span> Nuevo Producto</div>
     <form method="POST" action="/kardex/agregar_producto" style="display:flex;flex-direction:column;gap:8px;">
       <input type="text" name="nombre" placeholder="Nombre del producto" required style="padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;">
@@ -174,7 +174,7 @@
     </form>
   </div>
   {% if productos %}
-  <div class="card" id="form-movimiento" style="flex:2;min-width:420px;border-color:rgba(124,92,252,0.25);">
+  <div class="card" id="form-movimiento" style="flex:2;min-width:0;border-color:rgba(124,92,252,0.25);">
     <div class="card-title" style="font-size:13px;"><span class="icon">📝</span> Registrar Movimiento</div>
     <form method="POST" action="/kardex/movimiento" id="form-mov">
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px;">

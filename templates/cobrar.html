@@ -48,6 +48,7 @@
 <div class="card">
   <div class="card-title"><span class="icon">📋</span> Detalle de Cuentas por Cobrar</div>
   {% if cobrar|length > 0 %}
+  <div style="overflow-x:auto;">
   <table>
     <thead>
       <tr>
@@ -90,6 +91,7 @@
       {% endfor %}
     </tbody>
   </table>
+  </div>
   {% if total_pages > 1 %}
 <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-top:16px;">
   <a href="/cobrar?page=1{% if search %}&search={{ search }}{% endif %}" class="btn btn-outline" style="padding:6px 12px;font-size:11px;text-decoration:none;">««</a>

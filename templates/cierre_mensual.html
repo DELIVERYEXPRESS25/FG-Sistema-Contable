@@ -59,6 +59,7 @@
 <div class="card" style="border-color:rgba(79,140,255,0.35);margin-bottom:18px;">
   <div class="card-title"><span class="icon">🔍</span> Vista Previa — {{ tipo_actual|capitalize }} {{ periodo_preview }}</div>
 
+  <div style="overflow-x:auto;">
   <table style="margin-bottom:16px;">
     <thead>
       <tr>
@@ -103,6 +104,7 @@
       </tr>
     </tfoot>
   </table>
+  </div>
 
   <div style="display:flex;gap:10px;justify-content:center;">
     <form method="POST" action="/cierre-mensual/ejecutar">
@@ -122,6 +124,7 @@
   </div>
 
   {% if periodos %}
+  <div style="overflow-x:auto;">
   <table>
     <thead>
       <tr>
@@ -162,6 +165,7 @@
       {% endfor %}
     </tbody>
   </table>
+  </div>
   {% else %}
   <p style="color:var(--text-dim);text-align:center;padding:40px;">
     No hay períodos {{ tipo_actual|default('mensual') }} con movimientos contables aún.

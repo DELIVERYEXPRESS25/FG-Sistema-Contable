@@ -82,17 +82,28 @@ def _filtrar_por_periodo(data, desde, hasta):
     return d
 
 
+def _filtrar_hasta(data, hasta):
+    import copy
+    d = copy.deepcopy(data)
+    if hasta:
+        d["diario"] = [e for e in d.get("diario", []) if e.get("fecha", "") <= hasta]
+        d["ajustes"] = [a for a in d.get("ajustes", []) if a.get("fecha", "") <= hasta]
+    return d
+
+
 def _cargar_data(data, desde=None, hasta=None):
     from services.calculos import (
         calcular_mayor, calcular_balanza, calcular_estado_resultados,
         calcular_balance_general,
     )
     filtrada = _filtrar_por_periodo(data, desde, hasta) if desde or hasta else data
+    # Balance General usa solo hasta (acumulado), no desde
+    data_bg = _filtrar_hasta(data, hasta) if hasta else data
     mayor = calcular_mayor(filtrada)
     cuentas = data["cuentas"]
     balanza, td, th, tsd, tsh = calcular_balanza(filtrada)
     er_detalle_ing, er_total_ing, er_detalle_gas, er_total_gas, er_util = calcular_estado_resultados(filtrada)
-    bg_activos, bg_ta, bg_pasivos, bg_tp, bg_capital, bg_tc = calcular_balance_general(filtrada)
+    bg_activos, bg_ta, bg_pasivos, bg_tp, bg_capital, bg_tc = calcular_balance_general(data_bg)
     return {
         "mayor": mayor, "cuentas": cuentas,
         "balanza": balanza,

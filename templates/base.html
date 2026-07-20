@@ -479,6 +479,21 @@ canvas { max-width: 100%; }
 
     /* botones full-width dentro de form-row */
     .form-row .btn { width: 100%; justify-content: center; }
+
+    /* Touch targets más grandes */
+    .btn-sm { min-height: 36px; padding: 8px 14px; }
+    .ci-qty button { width: 36px !important; height: 36px !important; }
+    table .btn { min-height: 36px; min-width: 36px; }
+
+    /* Grids inline con valores fijos → 1 columna */
+    div[style*="grid-template-columns:180px"] { grid-template-columns: 1fr !important; }
+    div[style*="grid-template-columns:140px"] { grid-template-columns: 1fr !important; }
+    div[style*="grid-template-columns:160px"] { grid-template-columns: 1fr !important; }
+    div[style*="grid-template-columns:1fr 1fr 1fr"] { grid-template-columns: 1fr !important; }
+    div[style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr !important; }
+
+    /* Inputs más grandes para táctil */
+    input, select, textarea { font-size: 16px !important; }
 }
 
 /* ══════════════════════════════════════════════════════
@@ -508,6 +523,9 @@ canvas { max-width: 100%; }
     .sidebar-logo { padding: 18px 16px 14px; }
     .sidebar-logo .fg-icon { width: 42px; height: 42px; font-size: 18px; }
     .sidebar-logo h1 { font-size: 18px; }
+
+    /* Modal notificaciones full-width en móvil */
+    #modalNotificaciones .modal-box { right: 10px; left: 10px; max-width: unset; }
 }
 
 /* ══════════════════════════════════════════════════════

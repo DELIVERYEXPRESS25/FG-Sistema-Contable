@@ -3573,7 +3573,14 @@ def exportar_reporte():
         ws = wb.create_sheet("Balance General")
         ws.sheet_properties.tabColor = "E74C3C"
         start = add_title(ws, "Balance General", f"Activos = Pasivos + Capital — {periodo_str}")
-        activos, ta, pasivos, tp, capital_items, tc = calcular_balance_general(data)
+        if hasta:
+            import copy
+            data_bg = copy.deepcopy(data_original)
+            data_bg["diario"] = [e for e in data_bg.get("diario", []) if e.get("fecha", "") <= hasta]
+            data_bg["ajustes"] = [a for a in data_bg.get("ajustes", []) if a.get("fecha", "") <= hasta]
+        else:
+            data_bg = data_original
+        activos, ta, pasivos, tp, capital_items, tc = calcular_balance_general(data_bg)
 
         r = start
         ws.cell(row=r, column=1, value="ACTIVOS").font = Font(
@@ -4540,6 +4547,346 @@ def cierre_mensual_revertir(tipo, periodo):
     data = audit_log(data, "revertir_cierre", f"Revertir cierre {tipo} {periodo}")
     save_data(data)
     return redirect(url_for("cierre_mensual") + f"?ok=cierre_revertido&tipo={tipo}")
+
+# ── SALDOS POR PERÍODO (API) ──
+@app.route("/api/saldos_periodo")
+def api_saldos_periodo():
+    """Calcula saldo inicial, movimientos del período y saldo final para todas las cuentas."""
+    desde = request.args.get("desde", "")
+    hasta = request.args.get("hasta", "")
+    if not hasta:
+        return jsonify({"error": "Se requiere 'hasta'"}), 400
+
+    data = load_data()
+    cuentas = data["cuentas"]
+
+    # Acumuladores
+    saldo_inicial = defaultdict(lambda: {"debe": 0, "haber": 0})
+    movimientos_periodo = defaultdict(lambda: {"debe": 0, "haber": 0})
+
+    # Procesar diario
+    for entry in data.get("diario", []):
+        fecha = entry.get("fecha", "")
+        for mov in entry.get("movimientos", []):
+            cuenta = mov["cuenta"]
+            monto = mov["monto"]
+            if mov["tipo"] == "Debe":
+                if not desde or fecha < desde:
+                    saldo_inicial[cuenta]["debe"] += monto
+                if desde and desde <= fecha <= hasta:
+                    movimientos_periodo[cuenta]["debe"] += monto
+                if not desde and fecha <= hasta:
+                    saldo_inicial[cuenta]["debe"] += monto
+            else:
+                if not desde or fecha < desde:
+                    saldo_inicial[cuenta]["haber"] += monto
+                if desde and desde <= fecha <= hasta:
+                    movimientos_periodo[cuenta]["haber"] += monto
+                if not desde and fecha <= hasta:
+                    saldo_inicial[cuenta]["haber"] += monto
+
+    # Procesar ajustes
+    for aj in data.get("ajustes", []):
+        fecha = aj.get("fecha", "")
+        for mov in aj.get("movimientos", []):
+            cuenta = mov["cuenta"]
+            monto = mov["monto"]
+            if mov["tipo"] == "Debe":
+                if not desde or fecha < desde:
+                    saldo_inicial[cuenta]["debe"] += monto
+                if desde and desde <= fecha <= hasta:
+                    movimientos_periodo[cuenta]["debe"] += monto
+                if not desde and fecha <= hasta:
+                    saldo_inicial[cuenta]["debe"] += monto
+            else:
+                if not desde or fecha < desde:
+                    saldo_inicial[cuenta]["haber"] += monto
+                if desde and desde <= fecha <= hasta:
+                    movimientos_periodo[cuenta]["haber"] += monto
+                if not desde and fecha <= hasta:
+                    saldo_inicial[cuenta]["haber"] += monto
+
+    # Construir resultado por cuenta
+    resultado = []
+    for cod in sorted(cuentas.keys()):
+        info = cuentas[cod]
+        tipo = info.get("tipo", "")
+        ts = tipo_saldo(tipo)
+
+        si = saldo_inicial[cod]
+        mp = movimientos_periodo[cod]
+        sf_debe = si["debe"] + mp["debe"]
+        sf_haber = si["haber"] + mp["haber"]
+
+        saldo_ini = (si["debe"] - si["haber"]) if ts == "Debe" else (si["haber"] - si["debe"])
+        saldo_mov = (mp["debe"] - mp["haber"]) if ts == "Debe" else (mp["haber"] - mp["debe"])
+        saldo_fin = (sf_debe - sf_haber) if ts == "Debe" else (sf_haber - sf_debe)
+
+        if si["debe"] or si["haber"] or mp["debe"] or mp["haber"]:
+            resultado.append({
+                "codigo": cod,
+                "nombre": info.get("nombre", cod),
+                "tipo": tipo,
+                "saldo_inicial": round(saldo_ini, 2),
+                "mov_debe": round(mp["debe"], 2),
+                "mov_haber": round(mp["haber"], 2),
+                "movimientos": round(saldo_mov, 2),
+                "saldo_final": round(saldo_fin, 2),
+            })
+
+    return jsonify({
+        "desde": desde,
+        "hasta": hasta,
+        "cuentas": resultado,
+    })
+
+
+# ── COMPARACIÓN DE PERÍODOS (API) ──
+@app.route("/api/comparar_periodos")
+def api_comparar_periodos():
+    """Compara dos períodos y retorna totales de ingresos, gastos, utilidad y asientos."""
+    desde1 = request.args.get("desde1", "")
+    hasta1 = request.args.get("hasta1", "")
+    desde2 = request.args.get("desde2", "")
+    hasta2 = request.args.get("hasta2", "")
+
+    if not hasta1 or not hasta2:
+        return jsonify({"error": "Se requieren ambas fechas 'hasta'"}), 400
+
+    data = load_data()
+    cuentas = data["cuentas"]
+
+    def _calcular_periodo(d, h):
+        ing = 0
+        gas = 0
+        asientos = 0
+        cuentas_detalle = defaultdict(lambda: {"debe": 0, "haber": 0})
+
+        for entry in data.get("diario", []):
+            fecha = entry.get("fecha", "")
+            if d <= fecha <= h:
+                asientos += 1
+                for mov in entry.get("movimientos", []):
+                    cuenta = mov["cuenta"]
+                    monto = mov["monto"]
+                    if mov["tipo"] == "Debe":
+                        cuentas_detalle[cuenta]["debe"] += monto
+                    else:
+                        cuentas_detalle[cuenta]["haber"] += monto
+
+                    info = cuentas.get(cuenta, {})
+                    tipo = info.get("tipo", "")
+                    if tipo == "Ingreso" and mov["tipo"] == "Haber":
+                        ing += monto
+                    elif tipo == "Gasto" and mov["tipo"] == "Debe":
+                        gas += monto
+
+        for aj in data.get("ajustes", []):
+            fecha = aj.get("fecha", "")
+            if d <= fecha <= h:
+                for mov in aj.get("movimientos", []):
+                    cuenta = mov["cuenta"]
+                    monto = mov["monto"]
+                    if mov["tipo"] == "Debe":
+                        cuentas_detalle[cuenta]["debe"] += monto
+                    else:
+                        cuentas_detalle[cuenta]["haber"] += monto
+
+                    info = cuentas.get(cuenta, {})
+                    tipo = info.get("tipo", "")
+                    if tipo == "Ingreso" and mov["tipo"] == "Haber":
+                        ing += monto
+                    elif tipo == "Gasto" and mov["tipo"] == "Debe":
+                        gas += monto
+
+        return {
+            "ingresos": round(ing, 2),
+            "gastos": round(gas, 2),
+            "utilidad": round(ing - gas, 2),
+            "asientos": asientos,
+            "cuentas": dict(cuentas_detalle),
+        }
+
+    p1 = _calcular_periodo(desde1, hasta1)
+    p2 = _calcular_periodo(desde2, hasta2)
+
+    # Calcular comparación por cuenta
+    todas_cuentas = set(list(p1["cuentas"].keys()) + list(p2["cuentas"].keys()))
+    comparacion_cuentas = []
+
+    for cod in sorted(todas_cuentas):
+        info = cuentas.get(cod, {})
+        tipo = info.get("tipo", "")
+        ts = tipo_saldo(tipo)
+
+        c1 = p1["cuentas"].get(cod, {"debe": 0, "haber": 0})
+        c2 = p2["cuentas"].get(cod, {"debe": 0, "haber": 0})
+
+        saldo1 = (c1["debe"] - c1["haber"]) if ts == "Debe" else (c1["haber"] - c1["debe"])
+        saldo2 = (c2["debe"] - c2["haber"]) if ts == "Debe" else (c2["haber"] - c2["debe"])
+
+        diff = saldo1 - saldo2
+        porcentaje = ((diff / abs(saldo2) * 100) if saldo2 != 0 else (100 if diff > 0 else 0))
+
+        comparacion_cuentas.append({
+            "codigo": cod,
+            "nombre": info.get("nombre", cod),
+            "tipo": tipo,
+            "periodo1": round(saldo1, 2),
+            "periodo2": round(saldo2, 2),
+            "diferencia": round(diff, 2),
+            "porcentaje": round(porcentaje, 1),
+        })
+
+    return jsonify({
+        "periodo1": {"desde": desde1, "hasta": hasta1, **p1},
+        "periodo2": {"desde": desde2, "hasta": hasta2, **p2},
+        "cuentas": comparacion_cuentas,
+    })
+
+
+# ── VISTA PREVIA REAL (API) ──
+@app.route("/api/vista_previa")
+def api_vista_previa():
+    """Retorna datos reales para la vista previa de exportación."""
+    desde = request.args.get("desde", "")
+    hasta = request.args.get("hasta", "")
+    hojas = request.args.getlist("hojas")
+
+    data = load_data()
+    if not hasta:
+        hasta = "9999-12-31"
+
+    # Filtrar diario por período
+    diario_filtrado = [e for e in data.get("diario", []) if (not desde or desde <= e.get("fecha", "")) and e.get("fecha", "") <= hasta]
+    ajustes_filtrados = [a for a in data.get("ajustes", []) if (not desde or desde <= a.get("fecha", "")) and a.get("fecha", "") <= hasta]
+
+    # Crear data filtrada
+    import copy
+    data_filtrada = copy.deepcopy(data)
+    data_filtrada["diario"] = diario_filtrado
+    data_filtrada["ajustes"] = ajustes_filtrados
+
+    resultado = {}
+
+    # Balanza
+    if "balanza" in hojas:
+        try:
+            from services.calculos import calcular_balanza
+            balanza, td, th, tsd, tsh = calcular_balanza(data_filtrada)
+            resultado["balanza"] = {
+                "total_debe": round(td, 2),
+                "total_haber": round(th, 2),
+                "cuentas": len(balanza),
+                "diferencia": round(abs(td - th), 2),
+            }
+        except:
+            pass
+
+    # Estado de Resultados
+    if "er" in hojas:
+        try:
+            from services.calculos import calcular_estado_resultados
+            di, ti, dg, tg, util = calcular_estado_resultados(data_filtrada)
+            resultado["er"] = {
+                "ingresos": round(ti, 2),
+                "gastos": round(tg, 2),
+                "utilidad": round(util, 2),
+            }
+        except:
+            pass
+
+    # Balance General
+    if "bg" in hojas:
+        try:
+            from services.calculos import calcular_balance_general
+            activos, ta, pasivos, tp, capital, tc = calcular_balance_general(data_filtrada)
+            resultado["bg"] = {
+                "activos": round(ta, 2),
+                "pasivos": round(tp, 2),
+                "capital": round(tc, 2),
+                "verificacion": abs(ta - (tp + tc)) < 0.01,
+            }
+        except:
+            pass
+
+    # Diario
+    if "diario" in hojas:
+        resultado["diario"] = {
+            "count": len(diario_filtrado),
+            "primero": diario_filtrado[0].get("fecha", "-") if diario_filtrado else "-",
+            "ultimo": diario_filtrado[-1].get("fecha", "-") if diario_filtrado else "-",
+        }
+
+    # POS
+    if "pos" in hojas:
+        pos = [v for v in data.get("pos_historial", []) if (not desde or desde <= v.get("fecha", "")) and v.get("fecha", "") <= hasta]
+        total_pos = sum(v.get("total", 0) for v in pos)
+        util_pos = sum(v.get("utilidad", 0) for v in pos)
+        resultado["pos"] = {
+            "count": len(pos),
+            "total": round(total_pos, 2),
+            "utilidad": round(util_pos, 2),
+        }
+
+    # Kardex
+    if "kardex" in hojas:
+        kardex = data.get("kardex", {})
+        valor_total = 0
+        for prod, regs in kardex.items():
+            if regs:
+                ultimo = regs[-1]
+                valor_total += ultimo.get("saldo_costo_total", 0)
+        resultado["kardex"] = {
+            "count": len(kardex),
+            "valor": round(valor_total, 2),
+        }
+
+    return jsonify(resultado)
+
+
+# ── RANGO DE FECHAS DISPONIBLE (API) ──
+@app.route("/api/rango_fechas")
+def api_rango_fechas():
+    """Retorna la primera y última fecha de registros en el sistema."""
+    data = load_data()
+    
+    todas_fechas = []
+    
+    for entry in data.get("diario", []):
+        f = entry.get("fecha", "")
+        if f:
+            todas_fechas.append(f)
+    
+    for aj in data.get("ajustes", []):
+        f = aj.get("fecha", "")
+        if f:
+            todas_fechas.append(f)
+    
+    for v in data.get("pos_historial", []):
+        f = v.get("fecha", "")
+        if f:
+            todas_fechas.append(f)
+    
+    for mov in data.get("caja_movimientos", []):
+        f = mov.get("fecha", "")
+        if f:
+            todas_fechas.append(f)
+    
+    if todas_fechas:
+        todas_fechas.sort()
+        return jsonify({
+            "primera": todas_fechas[0],
+            "ultima": todas_fechas[-1],
+            "total_registros": len(todas_fechas),
+        })
+    else:
+        return jsonify({
+            "primera": "",
+            "ultima": "",
+            "total_registros": 0,
+        })
+
 
 if __name__ == "__main__":
     app.run(debug=False, host="0.0.0.0", port=5000)
