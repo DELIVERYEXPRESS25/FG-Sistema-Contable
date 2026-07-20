@@ -68,173 +68,6 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════
-     ANÁLISIS DE SALDOS POR PERÍODO
-     ═══════════════════════════════════════════════════════ -->
-<div class="card" style="margin-bottom:20px;">
-  <div class="card-title"><span class="icon">📊</span> Análisis de Saldos por Período</div>
-  <p style="color:var(--text-dim);font-size:12px;margin-bottom:12px;">Calcula el saldo inicial, movimientos del período y saldo final de cada cuenta.</p>
-  
-  <div class="form-row" style="align-items:end;gap:12px;margin-bottom:14px;">
-    <div class="form-group" style="max-width:200px;">
-      <label>Desde (inicio)</label>
-      <input type="date" id="saldoDesde">
-    </div>
-    <div class="form-group" style="max-width:200px;">
-      <label>Hasta (fin)</label>
-      <input type="date" id="saldoHasta">
-    </div>
-    <div class="form-group" style="max-width:180px;">
-      <label>Tipo de Cuenta</label>
-      <select id="saldoTipoCuenta">
-        <option value="">Todas</option>
-        <option value="Activo">Activo</option>
-        <option value="Pasivo">Pasivo</option>
-        <option value="Capital">Capital</option>
-        <option value="Ingreso">Ingreso</option>
-        <option value="Gasto">Gasto</option>
-      </select>
-    </div>
-    <button class="btn btn-primary btn-sm" onclick="calcularSaldos()" style="margin-bottom:2px;">Calcular</button>
-    <button class="btn btn-outline btn-sm" onclick="saldoPrimerUltimo()" title="Desde el primer registro al último" style="margin-bottom:2px;">↕️ Todo</button>
-  </div>
-  
-  <div id="saldosResultado" style="display:none;">
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:14px;">
-      <div style="padding:12px;border:1px solid var(--card-border);border-radius:8px;background:rgba(79,140,255,0.05);">
-        <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;">Saldo Inicial</div>
-        <div id="saldoInicialTotal" style="font-size:18px;font-weight:700;color:var(--accent);">C$ 0.00</div>
-      </div>
-      <div style="padding:12px;border:1px solid var(--card-border);border-radius:8px;background:rgba(39,174,96,0.05);">
-        <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;">Movimientos Período</div>
-        <div id="saldoMovimientosTotal" style="font-size:18px;font-weight:700;color:var(--green);">C$ 0.00</div>
-      </div>
-      <div style="padding:12px;border:1px solid var(--card-border);border-radius:8px;background:rgba(142,68,173,0.05);">
-        <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;">Saldo Final</div>
-        <div id="saldoFinalTotal" style="font-size:18px;font-weight:700;color:#8E44AD;">C$ 0.00</div>
-      </div>
-    </div>
-    
-    <div style="overflow-x:auto;">
-      <table id="saldosTable">
-        <thead>
-          <tr>
-            <th>Código</th>
-            <th>Nombre</th>
-            <th>Tipo</th>
-            <th style="text-align:right;">Saldo Inicial</th>
-            <th style="text-align:right;">Debe</th>
-            <th style="text-align:right;">Haber</th>
-            <th style="text-align:right;">Movimientos</th>
-            <th style="text-align:right;">Saldo Final</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </div>
-  
-  <div id="saldosVacio" style="text-align:center;padding:20px;color:var(--text-dim);font-size:13px;">
-    Selecciona un período y haz clic en "Calcular" para ver los saldos.
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════
-     COMPARACIÓN DE PERÍODOS
-     ═══════════════════════════════════════════════════════ -->
-<div class="card" style="margin-bottom:20px;">
-  <div class="card-title"><span class="icon">⚖️</span> Comparación de Períodos</div>
-  <p style="color:var(--text-dim);font-size:12px;margin-bottom:12px;">Compara dos períodos lado a lado para detectar tendencias y cambios.</p>
-  
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px;">
-    <!-- Período 1 -->
-    <div style="padding:12px;border:1px solid var(--card-border);border-radius:8px;background:rgba(79,140,255,0.03);">
-      <div style="font-weight:600;font-size:13px;margin-bottom:8px;color:var(--accent);">📅 Período 1 (Actual)</div>
-      <div style="display:flex;gap:8px;">
-        <input type="date" id="compDesde1" style="flex:1;padding:6px 10px;border:1px solid var(--card-border);border-radius:6px;font-size:12px;">
-        <input type="date" id="compHasta1" style="flex:1;padding:6px 10px;border:1px solid var(--card-border);border-radius:6px;font-size:12px;">
-      </div>
-    </div>
-    <!-- Período 2 -->
-    <div style="padding:12px;border:1px solid var(--card-border);border-radius:8px;background:rgba(142,68,173,0.03);">
-      <div style="font-weight:600;font-size:13px;margin-bottom:8px;color:#8E44AD;">📅 Período 2 (Anterior)</div>
-      <div style="display:flex;gap:8px;">
-        <input type="date" id="compDesde2" style="flex:1;padding:6px 10px;border:1px solid var(--card-border);border-radius:6px;font-size:12px;">
-        <input type="date" id="compHasta2" style="flex:1;padding:6px 10px;border:1px solid var(--card-border);border-radius:6px;font-size:12px;">
-      </div>
-    </div>
-  </div>
-  
-  <div style="display:flex;gap:8px;margin-bottom:14px;">
-    <button class="btn btn-primary btn-sm" onclick="compararPeriodos()">⚖️ Comparar</button>
-    <button class="btn btn-outline btn-sm" onclick="setComparacionRapida('mes')">Mes vs Mes Anterior</button>
-    <button class="btn btn-outline btn-sm" onclick="setComparacionRapida('trimestre')">Trimestre vs Anterior</button>
-  </div>
-  
-  <div id="comparacionResultado" style="display:none;">
-    <!-- Resumen rápido -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px;">
-      <div style="padding:12px;border:1px solid var(--card-border);border-radius:8px;text-align:center;">
-        <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;">Ingresos</div>
-        <div style="display:flex;justify-content:center;gap:8px;align-items:center;">
-          <span id="compIng1" style="font-weight:700;color:var(--green);">C$ 0</span>
-          <span style="color:var(--text-dim);">→</span>
-          <span id="compIng2" style="font-weight:700;color:#8E44AD;">C$ 0</span>
-        </div>
-        <div id="compIngDiff" style="font-size:12px;font-weight:600;margin-top:4px;">0%</div>
-      </div>
-      <div style="padding:12px;border:1px solid var(--card-border);border-radius:8px;text-align:center;">
-        <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;">Gastos</div>
-        <div style="display:flex;justify-content:center;gap:8px;align-items:center;">
-          <span id="compGas1" style="font-weight:700;color:var(--red);">C$ 0</span>
-          <span style="color:var(--text-dim);">→</span>
-          <span id="compGas2" style="font-weight:700;color:#8E44AD;">C$ 0</span>
-        </div>
-        <div id="compGasDiff" style="font-size:12px;font-weight:600;margin-top:4px;">0%</div>
-      </div>
-      <div style="padding:12px;border:1px solid var(--card-border);border-radius:8px;text-align:center;">
-        <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;">Utilidad</div>
-        <div style="display:flex;justify-content:center;gap:8px;align-items:center;">
-          <span id="compUtil1" style="font-weight:700;color:var(--accent);">C$ 0</span>
-          <span style="color:var(--text-dim);">→</span>
-          <span id="compUtil2" style="font-weight:700;color:#8E44AD;">C$ 0</span>
-        </div>
-        <div id="compUtilDiff" style="font-size:12px;font-weight:600;margin-top:4px;">0%</div>
-      </div>
-      <div style="padding:12px;border:1px solid var(--card-border);border-radius:8px;text-align:center;">
-        <div style="font-size:11px;color:var(--text-dim);margin-bottom:4px;">Asientos</div>
-        <div style="display:flex;justify-content:center;gap:8px;align-items:center;">
-          <span id="compAsig1" style="font-weight:700;color:var(--text);">0</span>
-          <span style="color:var(--text-dim);">→</span>
-          <span id="compAsig2" style="font-weight:700;color:#8E44AD;">0</span>
-        </div>
-        <div id="compAsigDiff" style="font-size:12px;font-weight:600;margin-top:4px;">0%</div>
-      </div>
-    </div>
-    
-    <!-- Tabla comparativa por cuenta -->
-    <div style="overflow-x:auto;">
-      <table id="comparacionTable">
-        <thead>
-          <tr>
-            <th>Código</th>
-            <th>Cuenta</th>
-            <th style="text-align:right;">Período 1</th>
-            <th style="text-align:right;">Período 2</th>
-            <th style="text-align:right;">Diferencia</th>
-            <th style="text-align:right;">%</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </div>
-  </div>
-  
-  <div id="comparacionVacio" style="text-align:center;padding:20px;color:var(--text-dim);font-size:13px;">
-    Selecciona dos períodos y haz clic en "Comparar" para ver las diferencias.
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════
      SELECCIÓN DE HOJAS
      ═══════════════════════════════════════════════════════ -->
 <div class="card" style="margin-bottom:20px;">
@@ -323,113 +156,6 @@
     <div style="display:flex;gap:8px;">
       <button class="btn btn-outline btn-sm" onclick="seleccionarTodas()">Todas</button>
       <button class="btn btn-outline btn-sm" onclick="seleccionarNinguna()">Ninguna</button>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════
-     FILTRO POR CUENTAS
-     ═══════════════════════════════════════════════════════ -->
-<div class="card" style="margin-bottom:20px;">
-  <div class="card-title"><span class="icon">🔍</span> Filtro por Cuentas (Opcional)</div>
-  <p style="color:var(--text-dim);font-size:12px;margin-bottom:12px;">Filtra el reporte por tipo de cuenta o cuentas específicas:</p>
-  
-  <div style="display:flex;gap:12px;flex-wrap:wrap;">
-    <div class="form-group" style="flex:1;min-width:200px;">
-      <label>Tipo de Cuenta</label>
-      <select id="filtroTipoCuenta" onchange="actualizarPreview()">
-        <option value="">Todos los tipos</option>
-        <option value="Activo">📦 Activo</option>
-        <option value="Pasivo">💳 Pasivo</option>
-        <option value="Capital">🏛️ Capital</option>
-        <option value="Ingreso">💚 Ingreso</option>
-        <option value="Gasto">❤️ Gasto</option>
-      </select>
-    </div>
-    <div class="form-group" style="flex:1;min-width:200px;">
-      <label>Cuenta Específica</label>
-      <select id="filtroCuentaEspecifica" onchange="actualizarPreview()">
-        <option value="">Todas las cuentas</option>
-        {% for cod in cuentas|sort %}
-        <option value="{{ cod }}">{{ cod }} — {{ cuentas[cod].nombre }}</option>
-        {% endfor %}
-      </select>
-    </div>
-  </div>
-</div>
-
-<!-- ═══════════════════════════════════════════════════════
-     VISTA PREVIA
-     ═══════════════════════════════════════════════════════ -->
-<div class="card" style="margin-bottom:20px;">
-  <div class="card-title"><span class="icon">👁️</span> Vista Previa</div>
-  <div id="vistaPrevia">
-    <div style="text-align:center;padding:20px;color:var(--text-dim);font-size:13px;">
-      Selecciona el período y las hojas para ver un resumen antes de exportar
-    </div>
-  </div>
-  <div id="vistaPreviaReal" style="display:none;">
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
-      <!-- Balanza -->
-      <div id="prevBalanza" style="display:none;padding:12px;border:1px solid var(--card-border);border-radius:8px;background:rgba(79,140,255,0.03);">
-        <div style="font-weight:600;font-size:13px;margin-bottom:8px;">⚖️ Balanza de Comprobación</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:12px;">
-          <div><span style="color:var(--text-dim);">Total Debe:</span> <span id="prevBalDebe" style="font-weight:600;">C$ 0</span></div>
-          <div><span style="color:var(--text-dim);">Total Haber:</span> <span id="prevBalHaber" style="font-weight:600;">C$ 0</span></div>
-          <div><span style="color:var(--text-dim);">Cuentas:</span> <span id="prevBalCuentas" style="font-weight:600;">0</span></div>
-          <div><span style="color:var(--text-dim);">Diferencia:</span> <span id="prevBalDiff" style="font-weight:600;">C$ 0</span></div>
-        </div>
-      </div>
-      
-      <!-- Estado de Resultados -->
-      <div id="prevER" style="display:none;padding:12px;border:1px solid var(--card-border);border-radius:8px;background:rgba(39,174,96,0.03);">
-        <div style="font-weight:600;font-size:13px;margin-bottom:8px;">📊 Estado de Resultados</div>
-        <div style="display:grid;grid-template-columns:1fr;gap:6px;font-size:12px;">
-          <div><span style="color:var(--text-dim);">Ingresos:</span> <span id="prevERIng" style="font-weight:600;color:var(--green);">C$ 0</span></div>
-          <div><span style="color:var(--text-dim);">Gastos:</span> <span id="prevERGas" style="font-weight:600;color:var(--red);">C$ 0</span></div>
-          <div style="border-top:1px solid var(--card-border);padding-top:6px;"><span style="color:var(--text-dim);">Utilidad:</span> <span id="prevERUtil" style="font-weight:700;">C$ 0</span></div>
-        </div>
-      </div>
-      
-      <!-- Balance General -->
-      <div id="prevBG" style="display:none;padding:12px;border:1px solid var(--card-border);border-radius:8px;background:rgba(142,68,173,0.03);">
-        <div style="font-weight:600;font-size:13px;margin-bottom:8px;">🏦 Balance General</div>
-        <div style="display:grid;grid-template-columns:1fr;gap:6px;font-size:12px;">
-          <div><span style="color:var(--text-dim);">Activos:</span> <span id="prevBGAct" style="font-weight:600;">C$ 0</span></div>
-          <div><span style="color:var(--text-dim);">Pasivos:</span> <span id="prevBGPas" style="font-weight:600;">C$ 0</span></div>
-          <div><span style="color:var(--text-dim);">Capital:</span> <span id="prevBGCap" style="font-weight:600;">C$ 0</span></div>
-          <div style="border-top:1px solid var(--card-border);padding-top:6px;"><span style="color:var(--text-dim);">Verificación:</span> <span id="prevBGVerif" style="font-weight:700;">A = P + C ✓</span></div>
-        </div>
-      </div>
-      
-      <!-- Diario -->
-      <div id="prevDiario" style="display:none;padding:12px;border:1px solid var(--card-border);border-radius:8px;background:rgba(243,156,18,0.03);">
-        <div style="font-weight:600;font-size:13px;margin-bottom:8px;">🧾 Libro Diario</div>
-        <div style="font-size:12px;">
-          <div><span style="color:var(--text-dim);">Asientos:</span> <span id="prevDiarioCount" style="font-weight:600;">0</span></div>
-          <div><span style="color:var(--text-dim);">Primer asiento:</span> <span id="prevDiarioPrimero" style="font-weight:600;">-</span></div>
-          <div><span style="color:var(--text-dim);">Último asiento:</span> <span id="prevDiarioUltimo" style="font-weight:600;">-</span></div>
-        </div>
-      </div>
-      
-      <!-- POS -->
-      <div id="prevPOS" style="display:none;padding:12px;border:1px solid var(--card-border);border-radius:8px;background:rgba(231,76,60,0.03);">
-        <div style="font-weight:600;font-size:13px;margin-bottom:8px;">🛒 Ventas POS</div>
-        <div style="font-size:12px;">
-          <div><span style="color:var(--text-dim);">Ventas:</span> <span id="prevPOSCount" style="font-weight:600;">0</span></div>
-          <div><span style="color:var(--text-dim);">Total:</span> <span id="prevPOSTotal" style="font-weight:600;color:var(--green);">C$ 0</span></div>
-          <div><span style="color:var(--text-dim);">Utilidad:</span> <span id="prevPOSUtil" style="font-weight:600;">C$ 0</span></div>
-        </div>
-      </div>
-      
-      <!-- Kardex -->
-      <div id="prevKardex" style="display:none;padding:12px;border:1px solid var(--card-border);border-radius:8px;background:rgba(52,152,219,0.03);">
-        <div style="font-weight:600;font-size:13px;margin-bottom:8px;">📦 Kardex PEPS</div>
-        <div style="font-size:12px;">
-          <div><span style="color:var(--text-dim);">Productos:</span> <span id="prevKardexCount" style="font-weight:600;">0</span></div>
-          <div><span style="color:var(--text-dim);">Valor inventario:</span> <span id="prevKardexValor" style="font-weight:600;">C$ 0</span></div>
-        </div>
-      </div>
     </div>
   </div>
 </div>
@@ -578,102 +304,94 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════
-     SECCIÓN PDF
+     BOTÓN PDF (abre modal)
      ═══════════════════════════════════════════════════════ -->
-<h3 id="pdf" style="margin:32px 0 12px;display:flex;align-items:center;gap:8px;">
-  <span style="font-size:20px;">📄</span> PDF
-  <span style="font-size:11px;color:var(--text-dim);font-weight:400;"> — Descargar como .pdf — respeta el filtro de período</span>
-</h3>
-
-<div class="grid-2" style="margin-top:12px;">
-  {% set pdfs = [
-    ("balanza", "⚖️", "Balanza de Comprobación"),
-    ("estado-resultados", "📊", "Estado de Resultados"),
-    ("balance-general", "🏦", "Balance General"),
-    ("diario", "🧾", "Libro Diario"),
-    ("mayor", "📗", "Libro Mayor"),
-    ("cobrar", "💳", "Cuentas por Cobrar"),
-    ("caja", "🏧", "Movimientos de Caja"),
-    ("completo", "📚", "Reporte Completo (todo)"),
-  ] %}
-  {% for slug, icon, label in pdfs %}
-  <div class="card" style="border-color:rgba(79,140,255,0.15);">
-    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
-      <div><div class="card-title" style="margin-bottom:2px;font-size:13px;"><span class="icon">{{ icon }}</span> {{ label }}</div></div>
-      <a href="#" class="btn btn-outline btn-sm" style="text-decoration:none;white-space:nowrap;" onclick="return descargarPDF('{{ slug }}')">📄 PDF</a>
-    </div>
-  </div>
-  {% endfor %}
-</div>
-
-<!-- ═══════════════════════════════════════════════════════
-     SECCIÓN ANTIGÜEDAD DE COBROS
-     ═══════════════════════════════════════════════════════ -->
-<h3 id="antiguedad" style="margin:32px 0 12px;display:flex;align-items:center;gap:8px;">
-  <span style="font-size:20px;">⏳</span> Antigüedad de Cobros
-  <span style="font-size:11px;color:var(--text-dim);font-weight:400;"> — Saldos pendientes por rango de vencimiento</span>
-</h3>
-
-<div class="card" style="border-color:rgba(230,126,34,0.25);">
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+<div class="card" style="border-color:rgba(39,174,96,0.35);background:linear-gradient(135deg,rgba(39,174,96,0.06),rgba(46,204,113,0.04));margin-bottom:20px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;">
     <div>
-      <div class="card-title" style="margin-bottom:4px;"><span class="icon">⏳</span> Reporte de Antigüedad</div>
+      <div class="card-title" style="margin-bottom:4px;"><span class="icon">📄</span> Exportar PDF</div>
       <p style="color:var(--text-dim);font-size:12px;margin:0;">
-        Cuentas por cobrar agrupadas por rango de días vencido: 0-30, 31-60, 61-90, 91+. Incluye detalle individual.
+        Selecciona el tipo de reporte para descargar en PDF
       </p>
     </div>
-    <a href="#" class="btn btn-outline btn-sm" style="text-decoration:none;" onclick="return descargarPDF('antiguedad-cobros')">📄 PDF</a>
+    <button class="btn btn-primary" style="padding:12px 28px;font-size:14px;background:linear-gradient(135deg,#27AE60,#2ECC71);" onclick="abrirModalPDF()">
+      📄 Exportar PDF
+    </button>
   </div>
 </div>
 
 <!-- ═══════════════════════════════════════════════════════
-     SECCIÓN AUDITORÍA
+     MODAL EXPORTAR PDF
      ═══════════════════════════════════════════════════════ -->
-<h3 id="auditoria" style="margin:32px 0 12px;display:flex;align-items:center;gap:8px;">
-  <span style="font-size:20px;">📜</span> Auditoría
-  <span style="font-size:11px;color:var(--text-dim);font-weight:400;"> — {{ auditoria_total }} registros — Actividades recientes del sistema</span>
-</h3>
-
-<div class="card" style="padding:0;">
-  {% if auditoria_entries %}
-  <div style="overflow-x:auto;">
-    <table>
-      <thead>
-        <tr>
-          <th>Fecha</th>
-          <th>Usuario</th>
-          <th>Acción</th>
-          <th>Detalle</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for e in auditoria_entries %}
-        <tr>
-          <td style="white-space:nowrap;">{{ e.fecha[:19] }}</td>
-          <td>{{ e.usuario }}</td>
-          <td>{{ e.accion }}</td>
-          <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;">{{ e.detalle }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+<div id="modalPDF" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:1000;justify-content:center;align-items:center;padding:20px;">
+  <div style="background:var(--bg);border:1px solid var(--card-border);border-radius:12px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;padding:24px;">
+    <!-- Header -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <h3 style="margin:0;font-size:18px;">📄 Exportar PDF</h3>
+      <button onclick="cerrarModalPDF()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-dim);padding:4px 8px;">✕</button>
+    </div>
+    
+    <!-- Período -->
+    <div style="margin-bottom:20px;">
+      <div style="font-weight:600;font-size:13px;margin-bottom:10px;">📅 Período</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+        <button class="btn btn-outline btn-sm" onclick="modalPDFSetPeriodo('hoy')">Hoy</button>
+        <button class="btn btn-outline btn-sm" onclick="modalPDFSetPeriodo('mes')">Este Mes</button>
+        <button class="btn btn-outline btn-sm" onclick="modalPDFSetPeriodo('trimestre')">Trimestre</button>
+        <button class="btn btn-primary btn-sm" onclick="modalPDFPrimerUltimo()">↕️ Todo</button>
+        <button class="btn btn-outline btn-sm" onclick="modalPDFLimpiar()">✕ Sin filtro</button>
+      </div>
+      <div style="display:flex;gap:12px;">
+        <div class="form-group" style="flex:1;">
+          <label>Desde</label>
+          <input type="date" id="modalPDFDesde" style="width:100%;padding:8px 12px;border:1px solid var(--card-border);border-radius:6px;">
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>Hasta</label>
+          <input type="date" id="modalPDFHasta" style="width:100%;padding:8px 12px;border:1px solid var(--card-border);border-radius:6px;">
+        </div>
+      </div>
+    </div>
+    
+    <!-- Tipo de Reporte -->
+    <div style="margin-bottom:20px;">
+      <div style="font-weight:600;font-size:13px;margin-bottom:10px;">📋 Tipo de Reporte</div>
+      <div style="display:grid;grid-template-columns:1fr;gap:8px;">
+        <button class="btn btn-outline" style="text-align:left;padding:12px 16px;" onclick="modalPDFDescargar('completo')">
+          📚 <strong>Reporte Completo</strong> — Todos los reportes en uno
+        </button>
+        <button class="btn btn-outline" style="text-align:left;padding:12px 16px;" onclick="modalPDFDescargar('balanza')">
+          ⚖️ Balanza de Comprobación
+        </button>
+        <button class="btn btn-outline" style="text-align:left;padding:12px 16px;" onclick="modalPDFDescargar('estado-resultados')">
+          📊 Estado de Resultados
+        </button>
+        <button class="btn btn-outline" style="text-align:left;padding:12px 16px;" onclick="modalPDFDescargar('balance-general')">
+          🏦 Balance General
+        </button>
+        <button class="btn btn-outline" style="text-align:left;padding:12px 16px;" onclick="modalPDFDescargar('diario')">
+          🧾 Libro Diario
+        </button>
+        <button class="btn btn-outline" style="text-align:left;padding:12px 16px;" onclick="modalPDFDescargar('mayor')">
+          📗 Libro Mayor
+        </button>
+        <button class="btn btn-outline" style="text-align:left;padding:12px 16px;" onclick="modalPDFDescargar('cobrar')">
+          💳 Cuentas por Cobrar
+        </button>
+        <button class="btn btn-outline" style="text-align:left;padding:12px 16px;" onclick="modalPDFDescargar('caja')">
+          🏧 Movimientos de Caja
+        </button>
+        <button class="btn btn-outline" style="text-align:left;padding:12px 16px;" onclick="modalPDFDescargar('antiguedad-cobros')">
+          ⏳ Antigüedad de Cobros
+        </button>
+      </div>
+    </div>
+    
+    <!-- Botón cerrar -->
+    <div style="text-align:right;">
+      <button class="btn btn-outline" onclick="cerrarModalPDF()">Cancelar</button>
+    </div>
   </div>
-  {% if auditoria_total_pages > 1 %}
-  <div class="pagination" style="display:flex;justify-content:center;gap:6px;padding:12px;">
-    {% if auditoria_page > 1 %}
-    <a href="?auditoria_page={{ auditoria_page - 1 }}#auditoria" class="btn btn-outline btn-sm" style="text-decoration:none;">← Anterior</a>
-    {% endif %}
-    <span style="padding:6px 12px;font-size:12px;color:var(--text-dim);">Pág {{ auditoria_page }} de {{ auditoria_total_pages }}</span>
-    {% if auditoria_page < auditoria_total_pages %}
-    <a href="?auditoria_page={{ auditoria_page + 1 }}#auditoria" class="btn btn-outline btn-sm" style="text-decoration:none;">Siguiente →</a>
-    {% endif %}
-  </div>
-  {% endif %}
-  {% else %}
-  <div style="padding:16px;text-align:center;color:var(--text-dim);font-size:13px;">
-    No hay registros de auditoría todavía.
-  </div>
-  {% endif %}
 </div>
 
 <!-- FEEDBACK / STATUS -->
@@ -771,8 +489,6 @@ function seleccionarNinguna() {
 function actualizarPreview() {
     const desde = document.getElementById('filtroDesde').value;
     const hasta = document.getElementById('filtroHasta').value;
-    const tipoCuenta = document.getElementById('filtroTipoCuenta').value;
-    const cuentaEsp = document.getElementById('filtroCuentaEspecifica').value;
     
     // Actualizar texto del período
     const periodoEl = document.getElementById('periodoSeleccionado');
@@ -781,18 +497,6 @@ function actualizarPreview() {
     } else {
         periodoEl.innerHTML = `Sin filtro — mostrará todos los datos`;
     }
-    
-    // Actualizar resumen de exportación
-    const resumenEl = document.getElementById('resumenExportacion');
-    const hojas = Array.from(hojasSeleccionadas);
-    const nombres = {
-        diario: 'Diario', mayor: 'Mayor', balanza: 'Balanza',
-        er: 'Estado Resultados', bg: 'Balance General',
-        pos: 'Ventas POS', kardex: 'Kardex', cobros: 'Cobros'
-    };
-    const textoHojas = hojas.map(h => nombres[h]).join(', ');
-    let texto = `${hojas.length} hoja(s): ${textoHojas}`;
-    if (desde && hasta) texto += ` — Período: ${desde} al ${hasta}`;
     if (tipoCuenta) texto += ` — Tipo: ${tipoCuenta}`;
     resumenEl.textContent = texto;
     
@@ -851,83 +555,6 @@ function actualizarPreview() {
     
     html += '</div>';
     previewEl.innerHTML = html;
-    
-    // Cargar vista previa real si hay fechas
-    if (desde || hasta) {
-        cargarVistaPreviaReal();
-    }
-}
-
-// ── Exportar ──
-function exportarSeleccionadas() {
-    const status = document.getElementById('exportStatus');
-    const content = document.getElementById('statusContent');
-
-    status.style.display = 'block';
-    status.style.borderColor = 'rgba(243,156,18,0.4)';
-    content.innerHTML = '<span style="font-size:22px;">⏳</span><div><strong style="color:var(--yellow);">Generando reporte...</strong><br><span style="color:var(--text-dim);font-size:12px;">Por favor espera un momento.</span></div>';
-
-    document.querySelectorAll('.btn').forEach(b => b.disabled = true);
-
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = '/reportes/exportar';
-    form.style.display = 'none';
-
-    // Enviar todas las hojas seleccionadas
-    hojasSeleccionadas.forEach(h => {
-        const input = document.createElement('input');
-        input.type = 'hidden';
-        input.name = 'hojas';
-        input.value = h;
-        form.appendChild(input);
-    });
-
-    // Enviar filtro de cuentas
-    const tipoCuenta = document.getElementById('filtroTipoCuenta').value;
-    const cuentaEsp = document.getElementById('filtroCuentaEspecifica').value;
-    if (tipoCuenta) {
-        const inp = document.createElement('input');
-        inp.name = 'tipo_cuenta'; inp.value = tipoCuenta;
-        form.appendChild(inp);
-    }
-    if (cuentaEsp) {
-        const inp = document.createElement('input');
-        inp.name = 'cuenta_especifica'; inp.value = cuentaEsp;
-        form.appendChild(inp);
-    }
-
-    // Enviar fechas
-    const d = document.getElementById('filtroDesde').value;
-    const h = document.getElementById('filtroHasta').value;
-    if (d) {
-        const inpD = document.createElement('input');
-        inpD.name = 'desde'; inpD.value = d;
-        form.appendChild(inpD);
-    }
-    if (h) {
-        const inpH = document.createElement('input');
-        inpH.name = 'hasta'; inpH.value = h;
-        form.appendChild(inpH);
-    }
-
-    document.body.appendChild(form);
-    form.submit();
-    document.body.removeChild(form);
-
-    setTimeout(() => {
-        status.style.borderColor = 'rgba(46,204,113,0.4)';
-        content.innerHTML = `
-            <span style="font-size:22px;">✅</span>
-            <div style="flex:1;">
-                <strong style="color:var(--green);">¡Descarga iniciada!</strong><br>
-                <span style="color:var(--text-dim);font-size:12px;">
-                    Tu navegador te preguntará dónde guardar el archivo.
-                </span>
-            </div>
-        `;
-        document.querySelectorAll('.btn').forEach(b => b.disabled = false);
-    }, 1500);
 }
 
 function descargarPDF(slug) {
@@ -939,303 +566,6 @@ function descargarPDF(slug) {
     return false;
 }
 
-// ── Análisis de Saldos por Período ──
-function calcularSaldos() {
-    const desde = document.getElementById('saldoDesde').value;
-    const hasta = document.getElementById('saldoHasta').value;
-    const tipoFiltro = document.getElementById('saldoTipoCuenta').value;
-    
-    if (!hasta) {
-        alert('Selecciona la fecha "Hasta" para calcular los saldos.');
-        return;
-    }
-    
-    let url = `/api/saldos_periodo?hasta=${hasta}`;
-    if (desde) url += `&desde=${desde}`;
-    
-    fetch(url)
-        .then(r => r.json())
-        .then(data => {
-            if (data.error) {
-                alert(data.error);
-                return;
-            }
-            
-            let cuentas = data.cuentas || [];
-            if (tipoFiltro) {
-                cuentas = cuentas.filter(c => c.tipo === tipoFiltro);
-            }
-            
-            // Calcular totales
-            let totalInicial = 0, totalMovimientos = 0, totalFinal = 0;
-            cuentas.forEach(c => {
-                totalInicial += c.saldo_inicial;
-                totalMovimientos += c.movimientos;
-                totalFinal += c.saldo_final;
-            });
-            
-            document.getElementById('saldoInicialTotal').textContent = `C$ ${totalInicial.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-            document.getElementById('saldoMovimientosTotal').textContent = `C$ ${totalMovimientos.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-            document.getElementById('saldoFinalTotal').textContent = `C$ ${totalFinal.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-            
-            // Colorear según positivo/negativo
-            const initEl = document.getElementById('saldoInicialTotal');
-            initEl.style.color = totalInicial >= 0 ? 'var(--green)' : 'var(--red)';
-            const movEl = document.getElementById('saldoMovimientosTotal');
-            movEl.style.color = totalMovimientos >= 0 ? 'var(--green)' : 'var(--red)';
-            const finEl = document.getElementById('saldoFinalTotal');
-            finEl.style.color = totalFinal >= 0 ? '#8E44AD' : 'var(--red)';
-            
-            // Llenar tabla
-            const tbody = document.querySelector('#saldosTable tbody');
-            tbody.innerHTML = '';
-            
-            if (cuentas.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--text-dim);padding:16px;">No hay movimientos en este período.</td></tr>';
-            } else {
-                const fmt = v => v.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                const colorClass = v => v >= 0 ? 'style="color:var(--green);"' : 'style="color:var(--red);"';
-                
-                cuentas.forEach(c => {
-                    const tr = document.createElement('tr');
-                    tr.innerHTML = `
-                        <td style="font-family:monospace;font-weight:600;">${c.codigo}</td>
-                        <td>${c.nombre}</td>
-                        <td><span style="font-size:11px;padding:2px 8px;border-radius:4px;background:rgba(79,140,255,0.1);color:var(--accent);">${c.tipo}</span></td>
-                        <td ${colorClass(c.saldo_inicial)} style="text-align:right;">${fmt(c.saldo_inicial)}</td>
-                        <td style="text-align:right;">${fmt(c.mov_debe)}</td>
-                        <td style="text-align:right;">${fmt(c.mov_haber)}</td>
-                        <td ${colorClass(c.movimientos)} style="text-align:right;">${fmt(c.movimientos)}</td>
-                        <td ${colorClass(c.saldo_final)} style="text-align:right;font-weight:600;">${fmt(c.saldo_final)}</td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-            }
-            
-            document.getElementById('saldosResultado').style.display = 'block';
-            document.getElementById('saldosVacio').style.display = 'none';
-        })
-        .catch(err => {
-            console.error('Error al calcular saldos:', err);
-            alert('Error al calcular saldos. Intenta de nuevo.');
-        });
-}
-
-// ── Comparación de Períodos ──
-function setComparacionRapida(tipo) {
-    const hoy = new Date();
-    let desde1, hasta1, desde2, hasta2;
-    
-    if (tipo === 'mes') {
-        // Mes actual vs mes anterior
-        hasta1 = hoy.toISOString().slice(0, 10);
-        desde1 = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-01';
-        
-        const mesAnt = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
-        hasta2 = new Date(hoy.getFullYear(), hoy.getMonth(), 0).toISOString().slice(0, 10);
-        desde2 = mesAnt.toISOString().slice(0, 10);
-    } else if (tipo === 'trimestre') {
-        // Trimestre actual vs anterior
-        const mes = hoy.getMonth();
-        const trimestre = Math.floor(mes / 3);
-        hasta1 = hoy.toISOString().slice(0, 10);
-        desde1 = hoy.getFullYear() + '-' + String(trimestre * 3 + 1).padStart(2, '0') + '-01';
-        
-        const triAnt = trimestre - 1;
-        const anioAnt = triAnt < 0 ? hoy.getFullYear() - 1 : hoy.getFullYear();
-        const triReal = triAnt < 0 ? 3 : triAnt;
-        hasta2 = new Date(anioAnt, triReal * 3 + 1, 0).toISOString().slice(0, 10);
-        desde2 = anioAnt + '-' + String(triReal * 3 + 1).padStart(2, '0') + '-01';
-    }
-    
-    document.getElementById('compDesde1').value = desde1;
-    document.getElementById('compHasta1').value = hasta1;
-    document.getElementById('compDesde2').value = desde2;
-    document.getElementById('compHasta2').value = hasta2;
-}
-
-function compararPeriodos() {
-    const desde1 = document.getElementById('compDesde1').value;
-    const hasta1 = document.getElementById('compHasta1').value;
-    const desde2 = document.getElementById('compDesde2').value;
-    const hasta2 = document.getElementById('compHasta2').value;
-    
-    if (!hasta1 || !hasta2) {
-        alert('Selecciona las fechas "Hasta" para ambos períodos.');
-        return;
-    }
-    
-    const url = `/api/comparar_periodos?desde1=${desde1}&hasta1=${hasta1}&desde2=${desde2}&hasta2=${hasta2}`;
-    
-    fetch(url)
-        .then(r => r.json())
-        .then(data => {
-            if (data.error) {
-                alert(data.error);
-                return;
-            }
-            
-            const fmt = v => 'C$ ' + v.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            const fmtPct = v => {
-                const sign = v > 0 ? '+' : '';
-                return `${sign}${v.toFixed(1)}%`;
-            };
-            const colorPct = v => v > 0 ? 'var(--green)' : v < 0 ? 'var(--red)' : 'var(--text-dim)';
-            
-            // Totales
-            const p1 = data.periodo1;
-            const p2 = data.periodo2;
-            
-            document.getElementById('compIng1').textContent = fmt(p1.ingresos);
-            document.getElementById('compIng2').textContent = fmt(p2.ingresos);
-            const diffIng = p2.ingresos > 0 ? ((p1.ingresos - p2.ingresos) / p2.ingresos * 100) : 0;
-            document.getElementById('compIngDiff').textContent = fmtPct(diffIng);
-            document.getElementById('compIngDiff').style.color = colorPct(diffIng);
-            
-            document.getElementById('compGas1').textContent = fmt(p1.gastos);
-            document.getElementById('compGas2').textContent = fmt(p2.gastos);
-            const diffGas = p2.gastos > 0 ? ((p1.gastos - p2.gastos) / p2.gastos * 100) : 0;
-            document.getElementById('compGasDiff').textContent = fmtPct(diffGas);
-            document.getElementById('compGasDiff').style.color = colorPct(-diffGas); // Invertido: más gastos = mal
-            
-            document.getElementById('compUtil1').textContent = fmt(p1.utilidad);
-            document.getElementById('compUtil2').textContent = fmt(p2.utilidad);
-            const diffUtil = p2.utilidad !== 0 ? ((p1.utilidad - p2.utilidad) / Math.abs(p2.utilidad) * 100) : 0;
-            document.getElementById('compUtilDiff').textContent = fmtPct(diffUtil);
-            document.getElementById('compUtilDiff').style.color = colorPct(diffUtil);
-            
-            document.getElementById('compAsig1').textContent = p1.asientos;
-            document.getElementById('compAsig2').textContent = p2.asientos;
-            const diffAsig = p2.asientos > 0 ? ((p1.asientos - p2.asientos) / p2.asientos * 100) : 0;
-            document.getElementById('compAsigDiff').textContent = fmtPct(diffAsig);
-            document.getElementById('compAsigDiff').style.color = colorPct(diffAsig);
-            
-            // Tabla de cuentas
-            const tbody = document.querySelector('#comparacionTable tbody');
-            tbody.innerHTML = '';
-            
-            const cuentas = data.cuentas || [];
-            if (cuentas.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-dim);padding:16px;">No hay movimientos en estos períodos.</td></tr>';
-            } else {
-                // Filtrar solo cuentas con movimiento
-                const conMov = cuentas.filter(c => c.periodo1 !== 0 || c.periodo2 !== 0);
-                
-                conMov.forEach(c => {
-                    const tr = document.createElement('tr');
-                    const diffColor = c.diferencia > 0 ? 'var(--green)' : c.diferencia < 0 ? 'var(--red)' : 'var(--text-dim)';
-                    tr.innerHTML = `
-                        <td style="font-family:monospace;font-weight:600;">${c.codigo}</td>
-                        <td>${c.nombre}</td>
-                        <td style="text-align:right;">${fmt(c.periodo1)}</td>
-                        <td style="text-align:right;">${fmt(c.periodo2)}</td>
-                        <td style="text-align:right;color:${diffColor};font-weight:600;">${fmt(c.diferencia)}</td>
-                        <td style="text-align:right;color:${diffColor};">${fmtPct(c.porcentaje)}</td>
-                    `;
-                    tbody.appendChild(tr);
-                });
-            }
-            
-            document.getElementById('comparacionResultado').style.display = 'block';
-            document.getElementById('comparacionVacio').style.display = 'none';
-        })
-        .catch(err => {
-            console.error('Error al comparar períodos:', err);
-            alert('Error al comparar. Intenta de nuevo.');
-        });
-}
-
-// ── Vista Previa Real ──
-function cargarVistaPreviaReal() {
-    const desde = document.getElementById('filtroDesde').value;
-    const hasta = document.getElementById('filtroHasta').value;
-    
-    if (!desde && !hasta) {
-        document.getElementById('vistaPreviaReal').style.display = 'none';
-        return;
-    }
-    
-    let url = '/api/vista_previa?';
-    if (desde) url += `desde=${desde}&`;
-    if (hasta) url += `hasta=${hasta}&`;
-    hojasSeleccionadas.forEach(h => url += `hojas=${h}&`);
-    
-    fetch(url)
-        .then(r => r.json())
-        .then(data => {
-            const fmt = v => 'C$ ' + v.toLocaleString('en', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-            
-            // Balanza
-            if (data.balanza) {
-                document.getElementById('prevBalanza').style.display = 'block';
-                document.getElementById('prevBalDebe').textContent = fmt(data.balanza.total_debe);
-                document.getElementById('prevBalHaber').textContent = fmt(data.balanza.total_haber);
-                document.getElementById('prevBalCuentas').textContent = data.balanza.cuentas;
-                document.getElementById('prevBalDiff').textContent = fmt(data.balanza.diferencia);
-                document.getElementById('prevBalDiff').style.color = data.balanza.diferencia === 0 ? 'var(--green)' : 'var(--red)';
-            } else {
-                document.getElementById('prevBalanza').style.display = 'none';
-            }
-            
-            // Estado de Resultados
-            if (data.er) {
-                document.getElementById('prevER').style.display = 'block';
-                document.getElementById('prevERIng').textContent = fmt(data.er.ingresos);
-                document.getElementById('prevERGas').textContent = fmt(data.er.gastos);
-                document.getElementById('prevERUtil').textContent = fmt(data.er.utilidad);
-                document.getElementById('prevERUtil').style.color = data.er.utilidad >= 0 ? 'var(--green)' : 'var(--red)';
-            } else {
-                document.getElementById('prevER').style.display = 'none';
-            }
-            
-            // Balance General
-            if (data.bg) {
-                document.getElementById('prevBG').style.display = 'block';
-                document.getElementById('prevBGAct').textContent = fmt(data.bg.activos);
-                document.getElementById('prevBGPas').textContent = fmt(data.bg.pasivos);
-                document.getElementById('prevBGCap').textContent = fmt(data.bg.capital);
-                document.getElementById('prevBGVerif').textContent = data.bg.verificacion ? 'A = P + C ✓' : 'A ≠ P + C ✗';
-                document.getElementById('prevBGVerif').style.color = data.bg.verificacion ? 'var(--green)' : 'var(--red)';
-            } else {
-                document.getElementById('prevBG').style.display = 'none';
-            }
-            
-            // Diario
-            if (data.diario) {
-                document.getElementById('prevDiario').style.display = 'block';
-                document.getElementById('prevDiarioCount').textContent = data.diario.count;
-                document.getElementById('prevDiarioPrimero').textContent = data.diario.primero;
-                document.getElementById('prevDiarioUltimo').textContent = data.diario.ultimo;
-            } else {
-                document.getElementById('prevDiario').style.display = 'none';
-            }
-            
-            // POS
-            if (data.pos) {
-                document.getElementById('prevPOS').style.display = 'block';
-                document.getElementById('prevPOSCount').textContent = data.pos.count;
-                document.getElementById('prevPOSTotal').textContent = fmt(data.pos.total);
-                document.getElementById('prevPOSUtil').textContent = fmt(data.pos.utilidad);
-            } else {
-                document.getElementById('prevPOS').style.display = 'none';
-            }
-            
-            // Kardex
-            if (data.kardex) {
-                document.getElementById('prevKardex').style.display = 'block';
-                document.getElementById('prevKardexCount').textContent = data.kardex.count;
-                document.getElementById('prevKardexValor').textContent = fmt(data.kardex.valor);
-            } else {
-                document.getElementById('prevKardex').style.display = 'none';
-            }
-            
-            document.getElementById('vistaPreviaReal').style.display = 'block';
-        })
-        .catch(err => {
-            console.error('Error al cargar vista previa:', err);
-        });
-}
-
 // ── Primero al Último (General) ──
 function primerUltimoRegistro() {
     fetch('/api/rango_fechas')
@@ -1245,24 +575,6 @@ function primerUltimoRegistro() {
                 document.getElementById('filtroDesde').value = data.primera;
                 document.getElementById('filtroHasta').value = data.ultima;
                 actualizarPreview();
-            } else {
-                alert('No hay registros en el sistema.');
-            }
-        })
-        .catch(err => {
-            console.error('Error al obtener rango:', err);
-        });
-}
-
-// ── Primero al Último (Análisis de Saldos) ──
-function saldoPrimerUltimo() {
-    fetch('/api/rango_fechas')
-        .then(r => r.json())
-        .then(data => {
-            if (data.primera && data.ultima) {
-                document.getElementById('saldoDesde').value = data.primera;
-                document.getElementById('saldoHasta').value = data.ultima;
-                calcularSaldos();
             } else {
                 alert('No hay registros en el sistema.');
             }
@@ -1445,7 +757,10 @@ function modalExportar() {
 
 // Cerrar modal con Escape
 document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') cerrarModalExportar();
+    if (e.key === 'Escape') {
+        cerrarModalExportar();
+        cerrarModalPDF();
+    }
 });
 
 // Actualizar resumen al cambiar checkboxes
@@ -1458,12 +773,84 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('modalHasta')?.addEventListener('change', actualizarModalResumen);
 });
 
+// ══════════════════════════════════════════════════════
+// MODAL EXPORTAR PDF
+// ══════════════════════════════════════════════════════
+function abrirModalPDF() {
+    document.getElementById('modalPDF').style.display = 'flex';
+}
+
+function cerrarModalPDF() {
+    document.getElementById('modalPDF').style.display = 'none';
+}
+
+function modalPDFSetPeriodo(preset) {
+    const hoy = new Date();
+    let desde, hasta;
+    
+    switch(preset) {
+        case 'hoy':
+            desde = hasta = hoy.toISOString().slice(0, 10);
+            break;
+        case 'mes':
+            desde = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2, '0') + '-01';
+            hasta = hoy.toISOString().slice(0, 10);
+            break;
+        case 'trimestre':
+            const mes = hoy.getMonth();
+            const trimestre = Math.floor(mes / 3);
+            desde = hoy.getFullYear() + '-' + String(trimestre * 3 + 1).padStart(2, '0') + '-01';
+            hasta = hoy.toISOString().slice(0, 10);
+            break;
+    }
+    
+    document.getElementById('modalPDFDesde').value = desde;
+    document.getElementById('modalPDFHasta').value = hasta;
+}
+
+function modalPDFPrimerUltimo() {
+    fetch('/api/rango_fechas')
+        .then(r => r.json())
+        .then(data => {
+            if (data.primera && data.ultima) {
+                document.getElementById('modalPDFDesde').value = data.primera;
+                document.getElementById('modalPDFHasta').value = data.ultima;
+            } else {
+                alert('No hay registros en el sistema.');
+            }
+        })
+        .catch(err => console.error('Error:', err));
+}
+
+function modalPDFLimpiar() {
+    document.getElementById('modalPDFDesde').value = '';
+    document.getElementById('modalPDFHasta').value = '';
+}
+
+function modalPDFDescargar(slug) {
+    const desde = document.getElementById('modalPDFDesde').value;
+    const hasta = document.getElementById('modalPDFHasta').value;
+    let url = `/reportes/pdf/${slug}`;
+    if (desde || hasta) {
+        url += '?';
+        if (desde) url += `desde=${desde}&`;
+        if (hasta) url += `hasta=${hasta}`;
+    }
+    window.location.href = url;
+    cerrarModalPDF();
+    
+    // Feedback
+    const status = document.getElementById('exportStatus');
+    const content = document.getElementById('statusContent');
+    status.style.display = 'block';
+    status.style.borderColor = 'rgba(46,204,113,0.4)';
+    content.innerHTML = '<span style="font-size:22px;">✅</span><div><strong style="color:var(--green);">¡Descarga PDF iniciada!</strong><br><span style="color:var(--text-dim);font-size:12px;">Tu navegador te preguntará dónde guardar el archivo.</span></div>';
+    setTimeout(() => { status.style.display = 'none'; }, 4000);
+}
+
 // ── Init ──
 document.addEventListener('DOMContentLoaded', () => {
     actualizarPreview();
-    // Cargar vista previa real cuando cambian las fechas
-    document.getElementById('filtroDesde')?.addEventListener('change', cargarVistaPreviaReal);
-    document.getElementById('filtroHasta')?.addEventListener('change', cargarVistaPreviaReal);
 });
 </script>
 {% endblock %}
