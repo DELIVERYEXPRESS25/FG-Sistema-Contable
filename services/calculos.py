@@ -250,6 +250,67 @@ def calcular_balance_general(data):
     return activos, total_activo, pasivos, total_pasivo, capital_items, total_capital
 
 
+def calcular_balance_general_con_utilidad(data, desde=None, hasta=None):
+    """
+    Calcula el Balance General separando:
+    - 3.3.01 Utilidad del Ejercicio: Solo utilidad del período actual (desde-hasta)
+    - 3.3.02 Utilidad Acumulada: Utilidad de períodos anteriores (antes de desde)
+    """
+    import copy
+    
+    # Calcular utilidad acumulada (antes del período actual)
+    utilidad_acumulada = 0
+    if desde:
+        data_antes = copy.deepcopy(data)
+        data_antes["diario"] = [e for e in data_antes.get("diario", []) if e.get("fecha", "") < desde]
+        data_antes["ajustes"] = [a for a in data_antes.get("ajustes", []) if a.get("fecha", "") < desde]
+        _, _, _, _, utilidad_acumulada = calcular_estado_resultados(data_antes)
+    
+    # Calcular utilidad del período actual
+    utilidad_periodo = 0
+    if hasta:
+        data_periodo = copy.deepcopy(data)
+        if desde:
+            data_periodo["diario"] = [e for e in data_periodo.get("diario", []) if desde <= e.get("fecha", "") <= hasta]
+            data_periodo["ajustes"] = [a for a in data_periodo.get("ajustes", []) if desde <= a.get("fecha", "") <= hasta]
+        else:
+            data_periodo["diario"] = [e for e in data_periodo.get("diario", []) if e.get("fecha", "") <= hasta]
+            data_periodo["ajustes"] = [a for a in data_periodo.get("ajustes", []) if a.get("fecha", "") <= hasta]
+        _, _, _, _, utilidad_periodo = calcular_estado_resultados(data_periodo)
+    else:
+        # Sin filtro, usar toda la utilidad
+        _, _, _, _, utilidad_periodo = calcular_estado_resultados(data)
+    
+    # Calcular mayor con todos los datos hasta la fecha
+    mayor = calcular_mayor(data)
+    cuentas = data["cuentas"]
+
+    def _saldo(codigo, info):
+        debe = mayor[codigo]["debe"] if codigo in mayor else 0
+        haber = mayor[codigo]["haber"] if codigo in mayor else 0
+        ts = tipo_saldo(info["tipo"])
+        saldo = (debe - haber) if ts == "Debe" else (haber - debe)
+        
+        if codigo == "3.3.01":
+            # Utilidad del Ejercicio: Solo utilidad del período actual
+            saldo += max(utilidad_periodo, 0)
+        elif codigo == "3.3.02":
+            # Utilidad Acumulada: Utilidad de períodos anteriores
+            saldo += max(utilidad_acumulada, 0)
+        
+        return saldo
+
+    activos = _construir_lista_jerarquica(cuentas, mayor, "Activo", _saldo)
+    pasivos = _construir_lista_jerarquica(cuentas, mayor, "Pasivo", _saldo)
+    capital_items = _construir_lista_jerarquica(cuentas, mayor, "Capital", _saldo)
+
+    total_activo = sum(item["saldo"] for item in activos if item["tipo"] == "leaf")
+    total_pasivo = sum(item["saldo"] for item in pasivos if item["tipo"] == "leaf")
+    total_capital = sum(item["saldo"] for item in capital_items if item["tipo"] == "leaf")
+
+    return activos, total_activo, pasivos, total_pasivo, capital_items, total_capital
+
+
 def get_ventas_por_dia(data):
     ventas = defaultdict(float)
     for entry in data["diario"]:

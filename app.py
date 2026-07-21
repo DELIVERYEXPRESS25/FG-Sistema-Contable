@@ -11,7 +11,8 @@ from decimal import Decimal, ROUND_HALF_UP
 from services.helpers import get_next_id, ensure_ids, get_data_dir, DATA_FILE, tipo_saldo
 from services.calculos import (
     calcular_mayor, calcular_balanza, calcular_estado_resultados,
-    calcular_balance_general, get_ventas_por_dia, get_ventas_por_mes,
+    calcular_balance_general, calcular_balance_general_con_utilidad,
+    get_ventas_por_dia, get_ventas_por_mes,
     get_gastos_por_mes,
     calcular_total_comercializacion,
     procesar_movimientos_periodo,
@@ -3573,14 +3574,7 @@ def exportar_reporte():
         ws = wb.create_sheet("Balance General")
         ws.sheet_properties.tabColor = "E74C3C"
         start = add_title(ws, "Balance General", f"Activos = Pasivos + Capital — {periodo_str}")
-        if hasta:
-            import copy
-            data_bg = copy.deepcopy(data_original)
-            data_bg["diario"] = [e for e in data_bg.get("diario", []) if e.get("fecha", "") <= hasta]
-            data_bg["ajustes"] = [a for a in data_bg.get("ajustes", []) if a.get("fecha", "") <= hasta]
-        else:
-            data_bg = data_original
-        activos, ta, pasivos, tp, capital_items, tc = calcular_balance_general(data_bg)
+        activos, ta, pasivos, tp, capital_items, tc = calcular_balance_general_con_utilidad(data_original, desde, hasta)
 
         r = start
         ws.cell(row=r, column=1, value="ACTIVOS").font = Font(
