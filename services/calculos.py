@@ -237,6 +237,10 @@ def calcular_balance_general(data):
             saldo += max(utilidad, 0)
         elif codigo == "3.3.02":
             saldo += max(-utilidad, 0)
+        elif codigo == "3.4":
+            # When using full data (no period filter), accumulated utility = total utility - current utility
+            # For full data, utilidad_periodo = utilidad, so accumulated = 0
+            pass
         return saldo
 
     activos = _construir_lista_jerarquica(cuentas, mayor, "Activo", _saldo)
@@ -295,6 +299,9 @@ def calcular_balance_general_con_utilidad(data, desde=None, hasta=None):
             # Utilidad del Ejercicio: Solo utilidad del período actual
             saldo += max(utilidad_periodo, 0)
         elif codigo == "3.3.02":
+            # Pérdida del Ejercicio: Solo pérdida del período actual
+            saldo += max(-utilidad_periodo, 0)
+        elif codigo == "3.4":
             # Utilidad Acumulada: Utilidad de períodos anteriores
             saldo += max(utilidad_acumulada, 0)
         
