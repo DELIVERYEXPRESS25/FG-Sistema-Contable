@@ -97,7 +97,6 @@ def _cargar_data(data, desde=None, hasta=None):
         calcular_balance_general,
     )
     filtrada = _filtrar_por_periodo(data, desde, hasta) if desde or hasta else data
-    # Balance General usa solo hasta (acumulado), no desde
     data_bg = _filtrar_hasta(data, hasta) if hasta else data
     mayor = calcular_mayor(filtrada)
     cuentas = data["cuentas"]
@@ -131,7 +130,6 @@ def _init_pdf(pdf=None):
     return pdf
 
 
-# ── Reportes principales ──────────────────────────────
 
 def pdf_balanza(data, desde=None, hasta=None, pdf=None):
     c = _cargar_data(data, desde, hasta)
@@ -326,7 +324,6 @@ def pdf_mayor(data, desde=None, hasta=None, pdf=None):
         return p
 
 
-# ── Reportes adicionales ──────────────────────────────
 
 def pdf_cobrar(data, desde=None, hasta=None, pdf=None):
     p = _init_pdf(pdf)
@@ -457,7 +454,6 @@ def _parse_fecha(f):
         return date.today()
 
 
-# ── Reporte completo (todos en un PDF) ──────────────
 
 def pdf_completo(data, desde=None, hasta=None):
     p = ReportePDF()
@@ -470,7 +466,6 @@ def pdf_completo(data, desde=None, hasta=None):
     return p
 
 
-# ── Reporte IVA (genera su propio periodo) ──────────
 
 def pdf_reporte_iva(data, desde, hasta):
     p = ReportePDF()
@@ -502,7 +497,6 @@ def pdf_reporte_iva(data, desde, hasta):
     return p
 
 
-# ── Generación de bytes ─────────────────────────────
 
 def generar_pdf_bytes(func_pdf, data, desde=None, hasta=None):
     pdf = func_pdf(data, desde, hasta)

@@ -95,7 +95,6 @@ def test_calcular_total_comercializacion_empty(data):
 
 def test_calcular_movimientos_cierre_empty(data):
     result = calcular_movimientos_cierre(data, "2025-01-01", "2025-12-31")
-    # Returns (movimientos, ing, gast, resultado)
     assert len(result) == 4
     assert result[1] == 0.0  # ing
 

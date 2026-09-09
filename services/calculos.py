@@ -18,7 +18,6 @@ def _construir_lista_jerarquica(cuentas, mayor, tipo_cuenta, calcular_saldo):
     """
     codes = sorted(c for c, info in cuentas.items() if info["tipo"] == tipo_cuenta)
 
-    # First pass: headers + leaves
     items = []
     for codigo in codes:
         info = cuentas[codigo]
@@ -30,7 +29,6 @@ def _construir_lista_jerarquica(cuentas, mayor, tipo_cuenta, calcular_saldo):
             saldo = calcular_saldo(codigo, info)
             items.append({"tipo": "leaf", "nombre": info["nombre"], "saldo": saldo, "nivel": nivel, "codigo": codigo})
 
-    # Second pass: insert subtotals bottom-up
     max_nivel = max((item["nivel"] for item in items), default=0)
     for nivel in range(max_nivel, -1, -1):
         i = 0
@@ -125,11 +123,9 @@ def calcular_balanza(data):
             saldo_d = max(-saldo, 0)
         return {"debe": debe, "haber": haber, "saldo_debe": saldo_d, "saldo_haber": saldo_h}
 
-    # Group by tipo, then process hierarchically within each
     for tipo in ("Activo", "Pasivo", "Capital", "Ingreso", "Gasto"):
         codes = sorted(c for c, info in cuentas.items() if info["tipo"] == tipo)
 
-        # First pass: headers + leaves
         items = []
         for codigo in codes:
             info = cuentas[codigo]
@@ -139,7 +135,6 @@ def calcular_balanza(data):
             else:
                 items.append({"tipo": "leaf", "nombre": info["nombre"], "nivel": nivel, "codigo": codigo, "_row": _calc_row(codigo)})
 
-        # Insert subtotals bottom-up — only at nivel 0 (type level)
         max_nivel = max((item["nivel"] for item in items), default=0)
         for nivel in range(max_nivel, -1, -1):
             i = 0
@@ -173,7 +168,6 @@ def calcular_balanza(data):
                 else:
                     i += 1
 
-        # Flatten into balanza list (no subtotals — template handles type-level totals)
         for item in items:
             if item["tipo"] == "subtotal":
                 continue
@@ -234,12 +228,10 @@ def calcular_balance_general(data):
         ts = tipo_saldo(info["tipo"])
         saldo = (debe - haber) if ts == "Debe" else (haber - debe)
         if codigo == "3.3.01":
-            saldo += max(utilidad, 0)
+            saldo = max(utilidad, 0)
         elif codigo == "3.3.02":
-            saldo += max(-utilidad, 0)
+            saldo = max(-utilidad, 0)
         elif codigo == "3.4":
-            # When using full data (no period filter), accumulated utility = total utility - current utility
-            # For full data, utilidad_periodo = utilidad, so accumulated = 0
             pass
         return saldo
 
@@ -262,7 +254,6 @@ def calcular_balance_general_con_utilidad(data, desde=None, hasta=None):
     """
     import copy
     
-    # Calcular utilidad acumulada (antes del período actual)
     utilidad_acumulada = 0
     if desde:
         data_antes = copy.deepcopy(data)
@@ -270,7 +261,6 @@ def calcular_balance_general_con_utilidad(data, desde=None, hasta=None):
         data_antes["ajustes"] = [a for a in data_antes.get("ajustes", []) if a.get("fecha", "") < desde]
         _, _, _, _, utilidad_acumulada = calcular_estado_resultados(data_antes)
     
-    # Calcular utilidad del período actual
     utilidad_periodo = 0
     if hasta:
         data_periodo = copy.deepcopy(data)
@@ -282,11 +272,13 @@ def calcular_balance_general_con_utilidad(data, desde=None, hasta=None):
             data_periodo["ajustes"] = [a for a in data_periodo.get("ajustes", []) if a.get("fecha", "") <= hasta]
         _, _, _, _, utilidad_periodo = calcular_estado_resultados(data_periodo)
     else:
-        # Sin filtro, usar toda la utilidad
         _, _, _, _, utilidad_periodo = calcular_estado_resultados(data)
     
-    # Calcular mayor con todos los datos hasta la fecha
-    mayor = calcular_mayor(data)
+    data_para_mayor = copy.deepcopy(data)
+    if hasta:
+        data_para_mayor["diario"] = [e for e in data_para_mayor.get("diario", []) if e.get("fecha", "") <= hasta]
+        data_para_mayor["ajustes"] = [a for a in data_para_mayor.get("ajustes", []) if a.get("fecha", "") <= hasta]
+    mayor = calcular_mayor(data_para_mayor)
     cuentas = data["cuentas"]
 
     def _saldo(codigo, info):
@@ -296,14 +288,11 @@ def calcular_balance_general_con_utilidad(data, desde=None, hasta=None):
         saldo = (debe - haber) if ts == "Debe" else (haber - debe)
         
         if codigo == "3.3.01":
-            # Utilidad del Ejercicio: Solo utilidad del período actual
-            saldo += max(utilidad_periodo, 0)
+            saldo = max(utilidad_periodo, 0)
         elif codigo == "3.3.02":
-            # Pérdida del Ejercicio: Solo pérdida del período actual
-            saldo += max(-utilidad_periodo, 0)
+            saldo = max(-utilidad_periodo, 0)
         elif codigo == "3.4":
-            # Utilidad Acumulada: Utilidad de períodos anteriores
-            saldo += max(utilidad_acumulada, 0)
+            saldo = max(utilidad_acumulada, 0)
         
         return saldo
 
@@ -465,9 +454,6 @@ def estan_balanceados(movimientos):
     return abs(total_debe - total_haber) <= 0.01 and total_debe > 0 and total_haber > 0
 
 
-# ═══════════════════════════════════════════════════════════════
-# FUNCIONES MEJORADAS PARA CIERRE MENSUAL
-# ═══════════════════════════════════════════════════════════════
 
 def procesar_movimientos_periodo(data, desde, hasta, excluir_cierre=True):
     """
@@ -485,7 +471,6 @@ def procesar_movimientos_periodo(data, desde, hasta, excluir_cierre=True):
     """
     saldos = defaultdict(lambda: {"debe": 0.0, "haber": 0.0})
     
-    # Procesar diario
     for entry in data.get("diario", []):
         if not (desde <= entry["fecha"] <= hasta):
             continue
@@ -498,7 +483,6 @@ def procesar_movimientos_periodo(data, desde, hasta, excluir_cierre=True):
             else:
                 saldos[mov["cuenta"]]["haber"] += monto
     
-    # Procesar ajustes
     for aj in data.get("ajustes", []):
         if not (desde <= aj["fecha"] <= hasta):
             continue
@@ -532,7 +516,6 @@ def calcular_movimientos_cierre(data, desde, hasta):
     total_ing = 0.0
     total_gast = 0.0
     
-    # Procesar cada cuenta
     for cod, info in cuentas.items():
         tipo_cta = info.get("tipo", "")
         saldo_data = saldos.get(cod, {"debe": 0.0, "haber": 0.0})
@@ -540,10 +523,8 @@ def calcular_movimientos_cierre(data, desde, hasta):
         haber = round(float(saldo_data.get("haber", 0)), 2)
         
         if tipo_cta == "Ingreso":
-            # Para ingresos: saldo = haber - debe
             saldo = round(haber - debe, 2)
             if abs(saldo) > 0.001:  # Mayor a 0.001 para evitar errores de redondeo
-                # Debitar la cuenta de ingreso para cerrarla
                 movimientos.append({
                     "cuenta": cod,
                     "tipo": "Debe",
@@ -551,10 +532,8 @@ def calcular_movimientos_cierre(data, desde, hasta):
                 })
                 total_ing += saldo
         elif tipo_cta == "Gasto":
-            # Para gastos: saldo = debe - haber
             saldo = round(debe - haber, 2)
             if abs(saldo) > 0.001:  # Mayor a 0.001 para evitar errores de redondeo
-                # Acreditar la cuenta de gasto para cerrarla
                 movimientos.append({
                     "cuenta": cod,
                     "tipo": "Haber",
@@ -562,7 +541,6 @@ def calcular_movimientos_cierre(data, desde, hasta):
                 })
                 total_gast += saldo
     
-    # Calcular diferencia (redondear para evitar errores de precisión)
     total_debe = sum(round(m["monto"], 2) for m in movimientos if m["tipo"] == "Debe")
     total_haber = sum(round(m["monto"], 2) for m in movimientos if m["tipo"] == "Haber")
     diferencia = round(total_debe - total_haber, 2)
@@ -600,7 +578,6 @@ def validar_cierre_posible(data, desde, hasta):
     saldos = procesar_movimientos_periodo(data, desde, hasta, excluir_cierre=True)
     cuentas = data["cuentas"]
     
-    # Verificar que existan cuentas de resultado con saldo
     hay_resultado = False
     for cod in cuentas:
         tipo_cta = cuentas[cod].get("tipo", "")

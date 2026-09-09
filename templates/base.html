@@ -707,7 +707,8 @@ canvas { max-width: 100%; }
 {% set msgs = {'password_actualizada': '✅ Contraseña actualizada correctamente',
                'password_actual_incorrecta': '❌ La contraseña actual no es correcta',
                'password_muy_corta': '❌ La nueva contraseña debe tener al menos 4 caracteres',
-               'password_no_coinciden': '❌ Las contraseñas nuevas no coinciden'} %}
+               'password_no_coinciden': '❌ Las contraseñas nuevas no coinciden',
+               'sin_stock': '❌ No se puede vender productos sin stock'} %}
 {% if request.args.get('ok') and request.args.get('ok') in msgs %}
 <div style="position:fixed;bottom:20px;right:20px;background:var(--green);color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,0.3);">
   {{ msgs[request.args.get('ok')] }}

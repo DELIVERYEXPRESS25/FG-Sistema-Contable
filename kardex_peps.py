@@ -1,18 +1,6 @@
-"""
-════════════════════════════════════════════════════════════════════════════
- Colectivo FG - Sistema de Kardex con Método PEPS
-════════════════════════════════════════════════════════════════════════════
-
-Manejo de inventario usando PEPS (Primeras Entradas, Primeras Salidas).
-Integrado con facturación para calcular costos automáticamente.
-"""
-
 from datetime import datetime
 from collections import deque
 
-# ════════════════════════════════════════════════════════════════════════════
-#  ESTRUCTURA DE DATOS PEPS
-# ════════════════════════════════════════════════════════════════════════════
 
 class LotePEPS:
     """Representa un lote de inventario con fecha de entrada."""
@@ -40,9 +28,6 @@ class LotePEPS:
         lote.cantidad_restante = data.get('cantidad_restante', data['cantidad'])
         return lote
 
-# ════════════════════════════════════════════════════════════════════════════
-#  FUNCIONES PEPS
-# ════════════════════════════════════════════════════════════════════════════
 
 def agregar_entrada_peps(data, producto_codigo, fecha, cantidad, costo_unitario, precio_venta=0):
     """
@@ -58,7 +43,6 @@ def agregar_entrada_peps(data, producto_codigo, fecha, cantidad, costo_unitario,
     Returns:
         dict: Data actualizado
     """
-    # Inicializar estructura PEPS si no existe
     if 'kardex_peps' not in data:
         data['kardex_peps'] = {}
     
@@ -73,7 +57,6 @@ def agregar_entrada_peps(data, producto_codigo, fecha, cantidad, costo_unitario,
     elif precio_venta > 0:
         data['kardex_peps'][producto_codigo]['precio_venta'] = precio_venta
 
-    # Sincronizar precio_venta con productos
     if precio_venta > 0 and 'productos' in data and producto_codigo in data['productos']:
         prod = data['productos'][producto_codigo]
         if isinstance(prod, dict):
@@ -82,17 +65,13 @@ def agregar_entrada_peps(data, producto_codigo, fecha, cantidad, costo_unitario,
             if not prod.get('margen') and data['kardex_peps'][producto_codigo].get('margen'):
                 prod['margen'] = data['kardex_peps'][producto_codigo]['margen']
     
-    # Agregar nuevo lote
     lote = LotePEPS(fecha, cantidad, costo_unitario)
     data['kardex_peps'][producto_codigo]['lotes'].append(lote.to_dict())
     
-    # Actualizar stock total
     data['kardex_peps'][producto_codigo]['stock_total'] += cantidad
     
-    # Recalcular costo promedio
     data = recalcular_costo_promedio(data, producto_codigo)
     
-    # Agregar al kardex tradicional para historial
     if 'kardex' not in data:
         data['kardex'] = {}
     if producto_codigo not in data['kardex']:
@@ -125,7 +104,6 @@ def procesar_salida_peps(data, producto_codigo, fecha, cantidad_solicitada):
     
     producto_peps = data['kardex_peps'][producto_codigo]
     
-    # Verificar stock disponible
     if producto_peps['stock_total'] < cantidad_solicitada:
         raise ValueError(f"Stock insuficiente. Disponible: {producto_peps['stock_total']}, Solicitado: {cantidad_solicitada}")
     
@@ -133,23 +111,18 @@ def procesar_salida_peps(data, producto_codigo, fecha, cantidad_solicitada):
     costo_total = 0
     lotes_usados = []
     
-    # Procesar salida PEPS (usar lotes más antiguos primero)
     for lote_dict in producto_peps['lotes']:
         if cantidad_pendiente <= 0:
             break
         
         if lote_dict['cantidad_restante'] > 0:
-            # Cuánto tomamos de este lote
             cantidad_tomar = min(cantidad_pendiente, lote_dict['cantidad_restante'])
             
-            # Calcular costo
             costo_lote = cantidad_tomar * lote_dict['costo_unitario']
             costo_total += costo_lote
             
-            # Actualizar lote
             lote_dict['cantidad_restante'] -= cantidad_tomar
             
-            # Registrar lote usado
             lotes_usados.append({
                 'fecha_entrada': lote_dict['fecha'],
                 'cantidad': cantidad_tomar,
@@ -157,16 +130,12 @@ def procesar_salida_peps(data, producto_codigo, fecha, cantidad_solicitada):
                 'costo_total': costo_lote
             })
             
-            # Reducir cantidad pendiente
             cantidad_pendiente -= cantidad_tomar
     
-    # Actualizar stock total
     producto_peps['stock_total'] -= cantidad_solicitada
     
-    # Recalcular costo promedio
     data = recalcular_costo_promedio(data, producto_codigo)
     
-    # Agregar al kardex tradicional
     if producto_codigo not in data['kardex']:
         data['kardex'][producto_codigo] = []
     
@@ -186,7 +155,6 @@ def procesar_salida_peps(data, producto_codigo, fecha, cantidad_solicitada):
         'lotes_usados': lotes_usados
     })
     
-    # Limpiar lotes vacíos
     producto_peps['lotes'] = [
         l for l in producto_peps['lotes']
         if l.get('cantidad_restante', 0) > 0
@@ -291,7 +259,6 @@ def generar_reporte_kardex_peps(data, producto_codigo=None, max_lotes=None):
     Returns:
         dict: Datos organizados para el reporte
     """
-    # Validar que existan las estructuras necesarias
     if not data:
         return {}
     
@@ -307,7 +274,6 @@ def generar_reporte_kardex_peps(data, producto_codigo=None, max_lotes=None):
     if producto_codigo:
         productos = [producto_codigo] if producto_codigo in data.get('kardex_peps', {}) else []
     else:
-        # Obtener todos los productos que tienen kardex o kardex_peps
         productos_kardex = set(data.get('kardex', {}).keys())
         productos_peps = set(data.get('kardex_peps', {}).keys())
         productos = list(productos_kardex | productos_peps)
@@ -318,7 +284,6 @@ def generar_reporte_kardex_peps(data, producto_codigo=None, max_lotes=None):
         try:
             info = obtener_info_producto_peps(data, codigo, max_lotes=max_lotes)
             
-            # Obtener nombre del producto
             nombre = codigo  # Default: usar el código
             
             if codigo in data.get('productos', {}):
@@ -345,7 +310,6 @@ def generar_reporte_kardex_peps(data, producto_codigo=None, max_lotes=None):
                 'movimientos': data.get('kardex', {}).get(codigo, [])
             }
         except Exception as e:
-            # Si hay error con un producto específico, continuar con el siguiente
             print(f"Error procesando producto {codigo}: {e}")
             continue
     

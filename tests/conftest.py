@@ -9,7 +9,6 @@ import db_internal
 @pytest.fixture
 def app():
     """App instance with test database."""
-    # Use a temp DB for tests
     original_path = os.environ.get("DB_PATH", ".colectivo_fg.db")
     test_db = os.path.join(os.path.dirname(__file__), "test_fg.db")
     os.environ["DB_PATH"] = test_db

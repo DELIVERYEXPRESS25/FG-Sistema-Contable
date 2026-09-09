@@ -375,8 +375,12 @@ function agregarCarrito(nombre) {
 
 function cambiarCantidad(nombre, delta) {
   if (!carrito[nombre]) return;
-  carrito[nombre].cantidad += delta;
-  if (carrito[nombre].cantidad <= 0) delete carrito[nombre];
+  const nuevaCantidad = carrito[nombre].cantidad + delta;
+  if (nuevaCantidad <= 0) {
+    delete carrito[nombre];
+  } else if (stockMap[nombre] && nuevaCantidad <= stockMap[nombre].stock) {
+    carrito[nombre].cantidad = nuevaCantidad;
+  }
   renderCarrito();
 }
 

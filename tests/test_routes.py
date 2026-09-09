@@ -1,6 +1,3 @@
-"""Tests for main application routes."""
-
-
 def test_index_returns_200(client):
     r = client.get("/")
     assert r.status_code == 200

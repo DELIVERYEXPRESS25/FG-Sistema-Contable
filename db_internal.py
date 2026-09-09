@@ -1,17 +1,3 @@
-"""
-════════════════════════════════════════════════════════════════════════════
- Colectivo FG - Base de Datos SQLite Optimizada
-═══════════════════════════════════════════════════════════════════════════
-
-Base de datos SQLite con:
-- Soporte para variables de entorno
-- Índices optimizados
-- Connection pool
-- Caché en memoria
-- Transacciones eficientes
-- Archivo oculto
-"""
-
 import sqlite3
 import json
 import os
@@ -20,12 +6,8 @@ from functools import lru_cache
 from contextlib import contextmanager
 from dotenv import load_dotenv
 
-# Cargar variables de entorno
 load_dotenv()
 
-# ════════════════════════════════════════════════════════════════════════
-#  CONFIGURACIÓN - Variables de entorno
-# ════════════════════════════════════════════════════════════════════════
 
 
 def get_db_config():
@@ -72,7 +54,6 @@ def get_db_connection_string():
     return None
 
 
-# Caché global de conexión
 _connection_pool = {}
 
 
@@ -84,7 +65,6 @@ def get_connection():
     conn = sqlite3.connect(db_path, check_same_thread=False)
     conn.row_factory = sqlite3.Row  # Permite acceso por nombre de columna
 
-    # Optimizaciones de rendimiento
     conn.execute("PRAGMA journal_mode=WAL")  # Write-Ahead Logging
     conn.execute("PRAGMA synchronous=NORMAL")  # Balance seguridad/velocidad
     conn.execute("PRAGMA cache_size=10000")  # Cache de 10MB
@@ -96,9 +76,6 @@ def get_connection():
         conn.close()
 
 
-# ════════════════════════════════════════════════════════════════════════════
-#  INICIALIZACIÓN
-# ════════════════════════════════════════════════════════════════════════════
 
 
 def init_database():
@@ -106,7 +83,6 @@ def init_database():
     with get_connection() as conn:
         cursor = conn.cursor()
 
-        # Tabla principal de datos (JSON comprimido)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS app_data (
                 key TEXT PRIMARY KEY,
@@ -115,7 +91,6 @@ def init_database():
             )
         """)
 
-        # Tabla de cuentas (desnormalizada para velocidad)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS cuentas (
                 codigo TEXT PRIMARY KEY,
@@ -126,7 +101,6 @@ def init_database():
             )
         """)
 
-        # Tabla de movimientos (para consultas rápidas)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS movimientos (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -140,7 +114,6 @@ def init_database():
             )
         """)
 
-        # Índices para rendimiento
         cursor.execute(
             "CREATE INDEX IF NOT EXISTS idx_movimientos_fecha ON movimientos(fecha DESC)"
         )
@@ -151,7 +124,6 @@ def init_database():
             "CREATE INDEX IF NOT EXISTS idx_movimientos_asiento ON movimientos(asiento_id)"
         )
 
-        # Tabla de Kardex PEPS
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS kardex_lotes (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -171,7 +143,6 @@ def init_database():
             "CREATE INDEX IF NOT EXISTS idx_kardex_activo ON kardex_lotes(activo)"
         )
 
-        # Inicializar datos si no existen
         cursor.execute("SELECT COUNT(*) FROM app_data WHERE key = ?", ("main_data",))
         if cursor.fetchone()[0] == 0:
             initial_data = empty_data()
@@ -184,7 +155,6 @@ def init_database():
 
         conn.commit()
 
-        # Ocultar archivo en Windows
         if sys.platform == "win32":
             try:
                 import ctypes
@@ -198,9 +168,6 @@ def init_database():
                 pass
 
 
-# ════════════════════════════════════════════════════════════════════════════
-#  OPERACIONES OPTIMIZADAS
-# ════════════════════════════════════════════════════════════════════════════
 
 
 def load_data():
@@ -217,7 +184,6 @@ def load_data():
             return json.loads(row[0])
         else:
             init_database()
-            # Reintentar tras inicializar
             cursor.execute("SELECT value FROM app_data WHERE key = ?", ("main_data",))
             row2 = cursor.fetchone()
             return json.loads(row2[0]) if row2 else {}
@@ -289,9 +255,6 @@ def empty_data():
     }
 
 
-# ════════════════════════════════════════════════════════════════════════════
-#  CONSULTAS OPTIMIZADAS
-# ════════════════════════════════════════════════════════════════════════════
 
 
 def get_movimientos_cuenta(cuenta, fecha_desde=None, fecha_hasta=None):
