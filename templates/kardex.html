@@ -222,6 +222,9 @@
 <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
   <span style="font-size:14px;font-weight:600;color:var(--text-bright);">📦 Productos ({{ productos|length }})</span>
   <input type="text" id="buscador" placeholder="🔍 Buscar…" style="flex:1;max-width:220px;padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;outline:none;">
+  <select id="selector-mes" onchange="filtrarPorMes()" style="padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;max-width:180px;">
+    <option value="">📅 Todos los meses</option>
+  </select>
   <select id="selector-producto" style="padding:7px 12px;background:var(--bg3);border:1px solid var(--card-border);border-radius:8px;color:var(--text);font-size:12px;max-width:240px;">
     <option value="">— Ir a producto —</option>
     {% for p in productos %}<option value="{{ p|lower }}">{{ p }}</option>{% endfor %}
@@ -389,6 +392,46 @@ function exportarKardex() {
   const f = document.createElement('form');
   f.method = 'POST'; f.action = '/kardex/exportar_peps';
   document.body.appendChild(f); f.submit(); document.body.removeChild(f);
+}
+
+// ── SELECTOR DE MES ──
+(function() {
+  const meses = new Set();
+  document.querySelectorAll('.producto-card table tbody tr').forEach(function(row) {
+    const fecha = row.cells[0] ? row.cells[0].textContent.trim() : '';
+    if (fecha && fecha.length >= 7) {
+      meses.add(fecha.substring(0, 7)); // "YYYY-MM"
+    }
+  });
+  const selectMes = document.getElementById('selector-mes');
+  const mesesArr = Array.from(meses).sort().reverse();
+  const nombresMes = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  mesesArr.forEach(function(m) {
+    const [anio, mes] = m.split('-');
+    const opt = document.createElement('option');
+    opt.value = m;
+    opt.textContent = nombresMes[parseInt(mes)-1] + ' ' + anio;
+    selectMes.appendChild(opt);
+  });
+})();
+
+let mesActual = '';
+function filtrarPorMes() {
+  mesActual = document.getElementById('selector-mes').value;
+  document.querySelectorAll('.producto-card table tbody tr').forEach(function(row) {
+    const fecha = row.cells[0] ? row.cells[0].textContent.trim() : '';
+    if (!mesActual || fecha.startsWith(mesActual)) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  });
+  // Ocultar productos sin movimientos visibles
+  document.querySelectorAll('.producto-card').forEach(function(card) {
+    const rows = card.querySelectorAll('table tbody tr');
+    const visibles = Array.from(rows).some(function(r) { return r.style.display !== 'none'; });
+    card.style.display = visibles ? '' : 'none';
+  });
 }
 
 // ── ORDEN KARDEX ──

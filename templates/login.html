@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>F&G Sistema Contable</title>
+<script src="https://unpkg.com/lucide@latest"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700;900&family=Inter:wght@300;400;500;600;700&display=swap');
 
@@ -257,7 +258,7 @@ body {
         </div>
       </div>
 
-      <h2>🔐 Acceso al Sistema</h2>
+      <h2>Acceso al Sistema</h2>
       <p class="sub">Ingresa la contraseña para continuar</p>
 
       {% if error %}
@@ -269,14 +270,14 @@ body {
           <label>Contraseña</label>
           <input type="password" name="password" placeholder="••••••••" autofocus required>
         </div>
-        <button type="submit" class="btn-submit">🔐 Ingresar</button>
+        <button type="submit" class="btn-submit">Ingresar</button>
       </form>
     </div>
   </div>
 
   <div class="login-right">
     <div class="hero-content">
-      <div class="hero-icon">📊</div>
+      <div class="hero-icon"><i data-lucide="bar-chart-3" style="width:60px;height:60px;color:var(--accent);"></i></div>
       <h2>F &amp; G</h2>
       <p>Control contable, inventarios y facturación en un solo lugar</p>
       <div class="features">
@@ -296,4 +297,5 @@ body {
     </div>
   </div>
 </body>
+<script>lucide.createIcons();</script>
 </html>

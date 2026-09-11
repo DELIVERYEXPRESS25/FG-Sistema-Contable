@@ -281,9 +281,14 @@
 {% set ventas_activas = historial|selectattr("anulada", "defined")|rejectattr("anulada")|list + historial|rejectattr("anulada", "defined")|list %}
 {% if ventas_activas|length > 0 %}
 <div class="card historial-wrap">
-  <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+  <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
     <span><span class="icon">📋</span> Historial de Ventas ({{ ventas_activas|length }})</span>
-    <button onclick="toggleSortHistorial()" id="btnSortHistorial" class="btn btn-outline btn-sm" style="font-size:11px;padding:4px 10px;" title="Cambiar orden">🔽 Más reciente</button>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <select id="selector-mes-pos" onchange="filtrarMesPOS()" style="padding:5px 10px;background:var(--bg3);border:1px solid var(--card-border);border-radius:6px;color:var(--text);font-size:11px;">
+        <option value="">📅 Todos los meses</option>
+      </select>
+      <button onclick="toggleSortHistorial()" id="btnSortHistorial" class="btn btn-outline btn-sm" style="font-size:11px;padding:4px 10px;" title="Cambiar orden">🔽 Más reciente</button>
+    </div>
   </div>
   <div id="historialContainer">
   {% for h in ventas_activas|reverse %}
@@ -508,6 +513,40 @@ function toggleSortHistorial() {
   items.forEach(function(item, i) {
     container.appendChild(item);
     if (detalles[i]) container.appendChild(detalles[i]);
+  });
+}
+
+// ── SELECTOR DE MES POS ──
+(function() {
+  const meses = new Set();
+  document.querySelectorAll('.hist-item').forEach(function(item) {
+    const fecha = item.dataset.fecha || '';
+    if (fecha && fecha.length >= 7) {
+      meses.add(fecha.substring(0, 7));
+    }
+  });
+  const selectMes = document.getElementById('selector-mes-pos');
+  const mesesArr = Array.from(meses).sort().reverse();
+  const nombresMes = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  mesesArr.forEach(function(m) {
+    const [anio, mes] = m.split('-');
+    const opt = document.createElement('option');
+    opt.value = m;
+    opt.textContent = nombresMes[parseInt(mes)-1] + ' ' + anio;
+    selectMes.appendChild(opt);
+  });
+})();
+
+function filtrarMesPOS() {
+  const mes = document.getElementById('selector-mes-pos').value;
+  document.querySelectorAll('.hist-item').forEach(function(item) {
+    const fecha = item.dataset.fecha || '';
+    const match = !mes || fecha.startsWith(mes);
+    item.style.display = match ? '' : 'none';
+    const detalle = item.nextElementSibling;
+    if (detalle && detalle.classList.contains('hist-detalle')) {
+      detalle.style.display = match ? '' : 'none';
+    }
   });
 }
 

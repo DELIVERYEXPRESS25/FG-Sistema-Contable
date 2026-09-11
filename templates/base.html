@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{% block title %}F&G Sistema Contable{% endblock %}</title>
+<script src="https://unpkg.com/lucide@latest"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@300;400;500;600&display=swap');
 
@@ -564,56 +565,56 @@ canvas { max-width: 100%; }
   <div class="sidebar-nav">
     <div class="nav-section">Registro</div>
     <a href="/" class="nav-item {% if request.path == '/' %}active{% endif %}">
-      <span class="icon">🏠</span> Dashboard
+      <span class="icon"><i data-lucide="house"></i></span> Dashboard
     </a>
     <a href="/catalogar" class="nav-item {% if request.path == '/catalogar' %}active{% endif %}">
-      <span class="icon">📘</span> Catálogo de Cuentas
+      <span class="icon"><i data-lucide="book-open"></i></span> Catálogo de Cuentas
     </a>
     <a href="/diario" class="nav-item {% if request.path == '/diario' %}active{% endif %}">
-      <span class="icon">🧾</span> Libro Diario
+      <span class="icon"><i data-lucide="file-text"></i></span> Libro Diario
     </a>
     <a href="/ajustes" class="nav-item {% if request.path == '/ajustes' %}active{% endif %}">
-      <span class="icon">📝</span> Asientos de Ajuste
+      <span class="icon"><i data-lucide="file-plus"></i></span> Asientos de Ajuste
     </a>
 
     <div class="nav-section">Análisis & Reportes</div>
     <a href="/auxiliar-diario" class="nav-item {% if request.path == '/auxiliar-diario' %}active{% endif %}">
-      <span class="icon">📋</span> Auxiliar Diario
+      <span class="icon"><i data-lucide="list"></i></span> Auxiliar Diario
     </a>
     <a href="/mayor" class="nav-item {% if request.path == '/mayor' %}active{% endif %}">
-      <span class="icon">📗</span> Libro Mayor
+      <span class="icon"><i data-lucide="book"></i></span> Libro Mayor
     </a>
     <a href="/balanza" class="nav-item {% if request.path == '/balanza' %}active{% endif %}">
-      <span class="icon">⚖️</span> Balanza de Comprobación
+      <span class="icon"><i data-lucide="scale"></i></span> Balanza de Comprobación
     </a>
     <a href="/estado_resultados" class="nav-item {% if request.path == '/estado_resultados' %}active{% endif %}">
-      <span class="icon">📊</span> Estado de Resultados
+      <span class="icon"><i data-lucide="bar-chart-3"></i></span> Estado de Resultados
     </a>
     <a href="/balance_general" class="nav-item {% if request.path == '/balance_general' %}active{% endif %}">
-      <span class="icon">🏦</span> Balance General
+      <span class="icon"><i data-lucide="landmark"></i></span> Balance General
     </a>
     <a href="/reportes" class="nav-item {% if request.path == '/reportes' %}active{% endif %}">
-      <span class="icon">📤</span> Reportes
+      <span class="icon"><i data-lucide="file-output"></i></span> Reportes
     </a>
     <a href="/cierre-mensual" class="nav-item {% if request.path == '/cierre-mensual' %}active{% endif %}">
-      <span class="icon">📆</span> Cierre Mensual
+      <span class="icon"><i data-lucide="calendar-check"></i></span> Cierre Mensual
     </a>
 
     <div class="nav-section">Gestión</div>
     <a href="/pos" class="nav-item {% if request.path == '/pos' %}active{% endif %}">
-      <span class="icon">🛒</span> Ventas POS
+      <span class="icon"><i data-lucide="shopping-cart"></i></span> Ventas POS
     </a>
     <a href="/kardex" class="nav-item {% if request.path == '/kardex' %}active{% endif %}">
-      <span class="icon">📦</span> Tarjetas Kardex
+      <span class="icon"><i data-lucide="boxes"></i></span> Tarjetas Kardex
     </a>
     <a href="/cobrar" class="nav-item {% if request.path == '/cobrar' %}active{% endif %}">
-      <span class="icon">💳</span> Cuentas por Cobrar
+      <span class="icon"><i data-lucide="credit-card"></i></span> Cuentas por Cobrar
     </a>
     <a href="/caja" class="nav-item {% if request.path == '/caja' %}active{% endif %}">
-      <span class="icon">💰</span> Auxiliar de Caja
+      <span class="icon"><i data-lucide="wallet"></i></span> Auxiliar de Caja
     </a>
     <a href="/comercializacion" class="nav-item {% if request.path == '/comercializacion' %}active{% endif %}">
-      <span class="icon">📣</span> Gastos Comercializ.
+      <span class="icon"><i data-lucide="megaphone"></i></span> Gastos Comercializ.
     </a>
   </div><!-- fin sidebar-nav -->
 
@@ -920,6 +921,7 @@ document.getElementById('btnBorrarTodo').addEventListener('click', function() {
         localStorage.setItem(key, isLight ? 'light' : 'dark');
     });
 })();
+lucide.createIcons();
 </script>
 </body>
 </html>

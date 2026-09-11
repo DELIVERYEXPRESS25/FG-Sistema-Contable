@@ -679,18 +679,15 @@ def exportar_reporte():
                 if hasta and mov_fecha > hasta:
                     continue
                 movs_filtrados.append(mov)
-            movs_filtrados.sort(key=lambda x: x.get("fecha", ""))
+            movs_filtrados = sorted(movs_filtrados, key=lambda x: (x.get("fecha", ""), x.get("descripcion", "")))
             if not movs_filtrados:
                 continue
             num_productos += 1
-            ultimo = movs_filtrados[-1]
-            ultimo_saldo_cant = ultimo.get("saldo", 0)
-            ultimo_saldo_costo = ultimo.get("costo", 0) * ultimo_saldo_cant if ultimo_saldo_cant else 0
-            total_saldo_cant += ultimo_saldo_cant
-            total_saldo_costo += ultimo_saldo_costo
 
             ws.cell(row=r, column=1, value=nombre).font = Font(name="Calibri", size=10, bold=True, color="333333")
             r += 1
+            saldo_cant_acum = 0
+            saldo_costo_acum = 0
             for mov in movs_filtrados:
                 tipo_mov = mov.get("tipo", "")
                 desc = mov.get("descripcion", "")
@@ -707,16 +704,21 @@ def exportar_reporte():
                 cantidad = mov.get("cantidad", 0)
                 costo_unit = mov.get("costo", 0)
                 costo_total = mov.get("total", cantidad * costo_unit)
-                saldo_cant = mov.get("saldo", 0)
-                saldo_costo = mov.get("costo", 0) * saldo_cant if saldo_cant else 0
+                if tipo_mov == "entrada":
+                    saldo_cant_acum += cantidad
+                    saldo_costo_acum += costo_total
+                elif tipo_mov == "salida":
+                    saldo_cant_acum -= cantidad
+                    saldo_costo_acum -= costo_total
+                saldo_costo_unit = saldo_costo_acum / saldo_cant_acum if saldo_cant_acum else 0
 
                 ws.cell(row=r, column=2, value=mov.get("fecha", ""))
                 ws.cell(row=r, column=3, value=tipo_label)
                 ws.cell(row=r, column=4, value=cantidad)
                 ws.cell(row=r, column=5, value=costo_unit).number_format = money_fmt
                 ws.cell(row=r, column=6, value=costo_total).number_format = money_fmt
-                ws.cell(row=r, column=7, value=saldo_cant)
-                ws.cell(row=r, column=8, value=saldo_costo).number_format = money_fmt
+                ws.cell(row=r, column=7, value=saldo_cant_acum)
+                ws.cell(row=r, column=8, value=saldo_costo_acum).number_format = money_fmt
                 ws.cell(row=r, column=9, value=desc)
                 if tipo_mov == "salida":
                     for c in range(1, 10):
@@ -726,6 +728,8 @@ def exportar_reporte():
                         ws.cell(row=r, column=c).font = green_font
                 style_data_row(ws, r, len(headers))
                 r += 1
+            total_saldo_cant += saldo_cant_acum
+            total_saldo_costo += saldo_costo_acum
             r += 1
 
         r += 1
