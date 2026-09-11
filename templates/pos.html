@@ -281,9 +281,13 @@
 {% set ventas_activas = historial|selectattr("anulada", "defined")|rejectattr("anulada")|list + historial|rejectattr("anulada", "defined")|list %}
 {% if ventas_activas|length > 0 %}
 <div class="card historial-wrap">
-  <div class="card-title"><span class="icon">📋</span> Historial de Ventas ({{ ventas_activas|length }})</div>
+  <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;">
+    <span><span class="icon">📋</span> Historial de Ventas ({{ ventas_activas|length }})</span>
+    <button onclick="toggleSortHistorial()" id="btnSortHistorial" class="btn btn-outline btn-sm" style="font-size:11px;padding:4px 10px;" title="Cambiar orden">🔽 Más reciente</button>
+  </div>
+  <div id="historialContainer">
   {% for h in ventas_activas|reverse %}
-  <div class="hist-item" onclick="toggleDetalle('detalle-{{ loop.revindex }}')">
+  <div class="hist-item" data-fecha="{{ h.fecha }}" data-ref="{{ h.ref }}" onclick="toggleDetalle('detalle-{{ loop.revindex }}')">
     <div class="hist-ref">
       {{ h.ref }}
     </div>
@@ -484,6 +488,27 @@ function procesarVenta() {
 function toggleDetalle(id) {
   const el = document.getElementById(id);
   if (el) el.classList.toggle('show');
+}
+
+// ── ORDEN HISTORIAL ──
+let historialAsc = false;
+function toggleSortHistorial() {
+  historialAsc = !historialAsc;
+  const btn = document.getElementById('btnSortHistorial');
+  btn.textContent = historialAsc ? '🔼 Más antiguo' : '🔽 Más reciente';
+  const container = document.getElementById('historialContainer');
+  const items = Array.from(container.querySelectorAll('.hist-item'));
+  const detalles = Array.from(container.querySelectorAll('.hist-detalle'));
+  items.sort(function(a, b) {
+    const fa = a.dataset.fecha + a.dataset.ref;
+    const fb = b.dataset.fecha + b.dataset.ref;
+    return historialAsc ? fa.localeCompare(fb) : fb.localeCompare(fa);
+  });
+  container.innerHTML = '';
+  items.forEach(function(item, i) {
+    container.appendChild(item);
+    if (detalles[i]) container.appendChild(detalles[i]);
+  });
 }
 
 // ── ACTUALIZAR STOCK CADA 15s ──

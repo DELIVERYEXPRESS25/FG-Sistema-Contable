@@ -679,6 +679,7 @@ def exportar_reporte():
                 if hasta and mov_fecha > hasta:
                     continue
                 movs_filtrados.append(mov)
+            movs_filtrados.sort(key=lambda x: x.get("fecha", ""))
             if not movs_filtrados:
                 continue
             num_productos += 1

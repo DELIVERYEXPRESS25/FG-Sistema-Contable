@@ -276,16 +276,17 @@
   <div style="margin-top:10px;overflow-x:auto;">
     <table style="min-width:580px;font-size:12px;">
       <thead><tr>
-        <th>Fecha</th><th>Tipo</th><th>Descripción</th>
+        <th><button onclick="toggleSortKardex('{{ producto|replace("'","\\'") }}')" id="btnSortKardex" class="btn btn-outline btn-sm" style="font-size:10px;padding:2px 6px;background:none;border:none;color:var(--text-bright);cursor:pointer;">Fecha ▲</button></th><th>Tipo</th><th>Descripción</th>
         <th style="text-align:right;">Cant.</th><th style="text-align:right;">Costo/u</th>
         <th style="text-align:right;">Venta/u</th><th style="text-align:right;">Total</th><th style="text-align:right;">Saldo</th>
         <th style="text-align:center;">Acciones</th>
       </tr></thead>
       <tbody>
         {% set total_movs = k|length %}
-        {% set disp = k[-50:] %}
-        {% for mov in disp|reverse %}
-        {% set real_idx = total_movs - 1 - loop.index0 %}
+        {% set sorted_k = k|sort(attribute='fecha') %}
+        {% set disp = sorted_k[-50:] if total_movs > 50 else sorted_k %}
+        {% for mov in disp %}
+        {% set real_idx = k.index(mov) %}
         <tr>
           <td style="white-space:nowrap;">{{ mov.fecha }}</td>
           <td>{% if mov.tipo == 'entrada' %}<span class="badge badge-green" style="font-size:10px;">📥</span>{% elif mov.tipo == 'salida' %}<span class="badge badge-red" style="font-size:10px;">📤</span>{% else %}<span class="badge badge-blue" style="font-size:10px;">🔄</span>{% endif %}</td>
@@ -388,6 +389,25 @@ function exportarKardex() {
   const f = document.createElement('form');
   f.method = 'POST'; f.action = '/kardex/exportar_peps';
   document.body.appendChild(f); f.submit(); document.body.removeChild(f);
+}
+
+// ── ORDEN KARDEX ──
+let kardexAsc = true;
+function toggleSortKardex(producto) {
+  kardexAsc = !kardexAsc;
+  const btn = document.getElementById('btnSortKardex');
+  btn.textContent = kardexAsc ? 'Fecha ▲' : 'Fecha ▼';
+  const card = btn.closest('.producto-card') || btn.closest('.card');
+  if (!card) return;
+  const tbody = card.querySelector('table tbody');
+  if (!tbody) return;
+  const rows = Array.from(tbody.querySelectorAll('tr'));
+  rows.sort(function(a, b) {
+    const fa = a.cells[0] ? a.cells[0].textContent.trim() : '';
+    const fb = b.cells[0] ? b.cells[0].textContent.trim() : '';
+    return kardexAsc ? fa.localeCompare(fb) : fb.localeCompare(fa);
+  });
+  rows.forEach(function(row) { tbody.appendChild(row); });
 }
 
 // ── Buscador ──
