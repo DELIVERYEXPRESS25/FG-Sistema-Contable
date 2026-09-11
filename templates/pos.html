@@ -284,6 +284,7 @@
   <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
     <span><span class="icon">📋</span> Historial de Ventas ({{ ventas_activas|length }})</span>
     <div style="display:flex;align-items:center;gap:8px;">
+      <input type="text" id="buscadorHistorial" placeholder="🔍 Buscar venta..." oninput="buscarHistorial()" style="padding:5px 10px;background:var(--bg3);border:1px solid var(--card-border);border-radius:6px;color:var(--text);font-size:11px;width:160px;">
       <select id="selector-mes-pos" onchange="filtrarMesPOS()" style="padding:5px 10px;background:var(--bg3);border:1px solid var(--card-border);border-radius:6px;color:var(--text);font-size:11px;">
         <option value="">📅 Todos los meses</option>
       </select>
@@ -292,7 +293,8 @@
   </div>
   <div id="historialContainer">
   {% for h in ventas_activas|reverse %}
-  <div class="hist-item" data-fecha="{{ h.fecha }}" data-ref="{{ h.ref }}" onclick="toggleDetalle('detalle-{{ loop.revindex }}')">
+  {% set prods_str = h.lineas|map(attribute='nombre')|join(' ') %}
+  <div class="hist-item" data-fecha="{{ h.fecha }}" data-ref="{{ h.ref }}" data-prods="{{ prods_str|lower }}" data-cliente="{{ h.cliente|lower }}" data-pago="{{ h.forma_pago|lower }}" onclick="toggleDetalle('detalle-{{ loop.revindex }}')">
     <div class="hist-ref">
       {{ h.ref }}
     </div>
@@ -542,6 +544,27 @@ function filtrarMesPOS() {
   document.querySelectorAll('.hist-item').forEach(function(item) {
     const fecha = item.dataset.fecha || '';
     const match = !mes || fecha.startsWith(mes);
+    item.style.display = match ? '' : 'none';
+    const detalle = item.nextElementSibling;
+    if (detalle && detalle.classList.contains('hist-detalle')) {
+      detalle.style.display = match ? '' : 'none';
+    }
+  });
+}
+
+function buscarHistorial() {
+  const q = document.getElementById('buscadorHistorial').value.toLowerCase().trim();
+  document.querySelectorAll('.hist-item').forEach(function(item) {
+    if (!q) {
+      item.style.display = '';
+      return;
+    }
+    const ref = (item.dataset.ref || '').toLowerCase();
+    const prods = (item.dataset.prods || '').toLowerCase();
+    const cliente = (item.dataset.cliente || '').toLowerCase();
+    const fecha = (item.dataset.fecha || '').toLowerCase();
+    const pago = (item.dataset.pago || '').toLowerCase();
+    const match = ref.includes(q) || prods.includes(q) || cliente.includes(q) || fecha.includes(q) || pago.includes(q);
     item.style.display = match ? '' : 'none';
     const detalle = item.nextElementSibling;
     if (detalle && detalle.classList.contains('hist-detalle')) {
