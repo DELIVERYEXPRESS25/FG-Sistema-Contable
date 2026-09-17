@@ -1,5 +1,6 @@
 from datetime import datetime
 from collections import deque
+from services.validaciones import validar_entrada, validar_salida
 
 
 class LotePEPS:
@@ -43,6 +44,8 @@ def agregar_entrada_peps(data, producto_codigo, fecha, cantidad, costo_unitario,
     Returns:
         dict: Data actualizado
     """
+    validar_entrada(data, producto_codigo, fecha, cantidad)
+
     if 'kardex_peps' not in data:
         data['kardex_peps'] = {}
     
@@ -99,13 +102,12 @@ def procesar_salida_peps(data, producto_codigo, fecha, cantidad_solicitada):
     Returns:
         tuple: (data actualizado, costo_total, lista de lotes usados)
     """
+    validar_salida(data, producto_codigo, fecha, cantidad_solicitada)
+
     if 'kardex_peps' not in data or producto_codigo not in data['kardex_peps']:
         raise ValueError(f"Producto {producto_codigo} no tiene inventario PEPS")
     
     producto_peps = data['kardex_peps'][producto_codigo]
-    
-    if producto_peps['stock_total'] < cantidad_solicitada:
-        raise ValueError(f"Stock insuficiente. Disponible: {producto_peps['stock_total']}, Solicitado: {cantidad_solicitada}")
     
     cantidad_pendiente = cantidad_solicitada
     costo_total = 0

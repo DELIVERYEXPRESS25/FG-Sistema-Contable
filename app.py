@@ -445,6 +445,13 @@ def pos_venta():
         data = load_data()
         fecha = request.form.get("fecha", date.today().isoformat())
 
+        # Validar fecha no futura
+        from services.validaciones import validar_fecha
+        try:
+            validar_fecha(fecha)
+        except ValueError as e:
+            return redirect(url_for("pos") + f"?error={str(e)}")
+
         if _periodo_cerrado(data, fecha):
             return redirect(url_for("pos") + "?error=periodo_cerrado")
 
@@ -1540,7 +1547,22 @@ def editar_movimiento_kardex():
     k = data["kardex"].get(producto, [])
     if 0 <= idx < len(k):
         mov = k[idx]
-        mov["fecha"] = request.form.get("fecha", mov.get("fecha", ""))
+        nueva_fecha = request.form.get("fecha", mov.get("fecha", ""))
+        nueva_cant_val = mov.get("cantidad", 0)
+        try:
+            nueva_cant_val = int(float(request.form.get("cantidad", mov.get("cantidad", 0))))
+        except (ValueError, TypeError):
+            pass
+
+        # Validar fecha y cantidad
+        from services.validaciones import validar_fecha, validar_cantidad
+        try:
+            validar_fecha(nueva_fecha)
+            validar_cantidad(nueva_cant_val)
+        except ValueError as e:
+            return redirect(url_for("kardex") + f"?error={str(e)}")
+
+        mov["fecha"] = nueva_fecha
         mov["descripcion"] = request.form.get("descripcion", mov.get("descripcion", ""))
         nuevo_pv = mov.get("precio_venta", 0)
         try:

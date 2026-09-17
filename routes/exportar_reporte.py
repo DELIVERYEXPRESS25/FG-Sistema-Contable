@@ -666,6 +666,7 @@ def exportar_reporte():
         total_saldo_costo = 0
         total_saldo_cant = 0
         num_productos = 0
+        last_data_row = start
         productos = sorted(data["kardex"].keys())
         for nombre in productos:
             movimientos = data["kardex"][nombre]
@@ -686,8 +687,34 @@ def exportar_reporte():
 
             ws.cell(row=r, column=1, value=nombre).font = Font(name="Calibri", size=10, bold=True, color="333333")
             r += 1
+
+            # Calculate opening balance from movements before the period
             saldo_cant_acum = 0
             saldo_costo_acum = 0
+            if desde:
+                for mov in movimientos:
+                    if mov.get("fecha", "") < desde:
+                        cant = mov.get("cantidad", 0)
+                        total_val = mov.get("total", cant * mov.get("costo", 0))
+                        if mov.get("tipo") == "entrada":
+                            saldo_cant_acum += cant
+                            saldo_costo_acum += total_val
+                        elif mov.get("tipo") == "salida":
+                            saldo_cant_acum -= cant
+                            saldo_costo_acum -= total_val
+                if saldo_cant_acum != 0 or saldo_costo_acum != 0:
+                    ws.cell(row=r, column=2, value=desde)
+                    ws.cell(row=r, column=3, value="Saldo anterior")
+                    ws.cell(row=r, column=4, value=saldo_cant_acum)
+                    ws.cell(row=r, column=7, value=saldo_cant_acum)
+                    ws.cell(row=r, column=8, value=saldo_costo_acum).number_format = money_fmt
+                    ws.cell(row=r, column=9, value="Saldo arrastrado del periodo anterior")
+                    ws.cell(row=r, column=2).font = Font(name="Calibri", size=10, italic=True, color="666666")
+                    ws.cell(row=r, column=3).font = Font(name="Calibri", size=10, italic=True, color="666666")
+                    for c in range(1, 10):
+                        ws.cell(row=r, column=c).fill = PatternFill(start_color="FFFDE7", end_color="FFFDE7", fill_type="solid")
+                    r += 1
+
             for mov in movs_filtrados:
                 tipo_mov = mov.get("tipo", "")
                 desc = mov.get("descripcion", "")
@@ -727,10 +754,13 @@ def exportar_reporte():
                     for c in range(1, 10):
                         ws.cell(row=r, column=c).font = green_font
                 style_data_row(ws, r, len(headers))
+                last_data_row = r
                 r += 1
             total_saldo_cant += saldo_cant_acum
             total_saldo_costo += saldo_costo_acum
             r += 1
+
+        ws.auto_filter.ref = f"A{start}:I{last_data_row}"
 
         r += 1
         ws.cell(row=r, column=1, value="RESUMEN INVENTARIO").font = Font(
