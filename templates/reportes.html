@@ -34,9 +34,9 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════════
-     CONTROL DE PERÍODO
+     CONTROL DE PERÍODO (OCULTO - se usa el modal de exportar)
      ═══════════════════════════════════════════════════════ -->
-<div class="card" style="margin-bottom:20px;">
+<div class="card" style="margin-bottom:20px;display:none;">
   <div class="card-title"><span class="icon">📅</span> Período del Reporte</div>
   
   <!-- Presets rápidos -->
@@ -192,10 +192,14 @@
     <div style="margin-bottom:20px;">
       <div style="font-weight:600;font-size:13px;margin-bottom:10px;">📅 Seleccionar Período</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
-        <button class="btn btn-outline btn-sm" onclick="modalSetPeriodo('hoy')">Hoy</button>
-        <button class="btn btn-outline btn-sm" onclick="modalSetPeriodo('mes')">Este Mes</button>
-        <button class="btn btn-outline btn-sm" onclick="modalSetPeriodo('trimestre')">Trimestre</button>
-        <button class="btn btn-outline btn-sm" onclick="modalSetPeriodo('anio')">Año</button>
+        <button id="btnHoy" class="btn btn-outline btn-sm" onclick="modalSetPeriodo('hoy')" style="display:none;">Hoy</button>
+        <button id="btnEsteMes" class="btn btn-outline btn-sm" onclick="modalSetPeriodo('mes')" style="display:none;">Este Mes</button>
+        <button id="btnTrimestre" class="btn btn-outline btn-sm" onclick="modalSetPeriodo('trimestre')" style="display:none;">Trimestre</button>
+        <button id="btnAnio" class="btn btn-outline btn-sm" onclick="modalSetPeriodo('anio')" style="display:none;">Año</button>
+        <button id="btnHoyOff" class="btn btn-outline btn-sm" disabled style="opacity:0.4;cursor:not-allowed;" title="No hay datos en 2026 — estos botones se activarán cuando haya registros en el año actual">Hoy</button>
+        <button id="btnEsteMesOff" class="btn btn-outline btn-sm" disabled style="opacity:0.4;cursor:not-allowed;" title="No hay datos en 2026 — estos botones se activarán cuando haya registros en el año actual">Este Mes</button>
+        <button id="btnTrimestreOff" class="btn btn-outline btn-sm" disabled style="opacity:0.4;cursor:not-allowed;" title="No hay datos en 2026 — estos botones se activarán cuando haya registros en el año actual">Trimestre</button>
+        <button id="btnAnioOff" class="btn btn-outline btn-sm" disabled style="opacity:0.4;cursor:not-allowed;" title="No hay datos en 2026 — estos botones se activarán cuando haya registros en el año actual">Año</button>
         <button class="btn btn-primary btn-sm" onclick="modalPrimerUltimo()">↕️ Primer Registro al Último</button>
         <button class="btn btn-outline btn-sm" onclick="modalLimpiar()">✕ Todo (sin filtro)</button>
       </div>
@@ -591,7 +595,34 @@ const modalHojas = ['diario', 'mayor', 'balanza', 'er', 'bg', 'pos', 'kardex', '
 
 function abrirModalExportar() {
     document.getElementById('modalExportar').style.display = 'flex';
-    actualizarModalResumen();
+    verificarBotonesPeriodo();
+    modalPrimerUltimo();
+}
+
+function verificarBotonesPeriodo() {
+    fetch('/api/rango_fechas')
+        .then(r => r.json())
+        .then(data => {
+            if (data.primera && data.ultima) {
+                const anioActual = new Date().getFullYear();
+                const primeraFecha = new Date(data.primera);
+                const ultimaFecha = new Date(data.ultima);
+                const tieneAnioActual = (primeraFecha.getFullYear() <= anioActual && ultimaFecha.getFullYear() >= anioActual) ||
+                                        primeraFecha.getFullYear() === anioActual || ultimaFecha.getFullYear() === anioActual;
+                
+                const btnsOn = ['btnHoy', 'btnEsteMes', 'btnTrimestre', 'btnAnio'];
+                const btnsOff = ['btnHoyOff', 'btnEsteMesOff', 'btnTrimestreOff', 'btnAnioOff'];
+                
+                if (tieneAnioActual) {
+                    btnsOn.forEach(id => document.getElementById(id).style.display = '');
+                    btnsOff.forEach(id => document.getElementById(id).style.display = 'none');
+                } else {
+                    btnsOn.forEach(id => document.getElementById(id).style.display = 'none');
+                    btnsOff.forEach(id => document.getElementById(id).style.display = '');
+                }
+            }
+        })
+        .catch(err => console.error('Error:', err));
 }
 
 function cerrarModalExportar() {
