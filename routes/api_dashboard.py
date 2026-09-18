@@ -30,19 +30,44 @@ def api_gastos_mes():
 def api_stock():
     data = load_data()
     stock = {}
-    for prod, info in data.get("kardex_peps", {}).items():
-        stock[prod] = {
-            "stock": info.get("stock_total", 0),
-            "costo": info.get("costo_promedio", 0),
-            "precio_venta": info.get("precio_venta", 0),
-        }
-    for prod, info in data.get("productos", {}).items():
-        if prod not in stock:
+    
+    # Calculate stock from Kardex (the reliable source)
+    for prod, movs in data.get("kardex", {}).items():
+        if isinstance(movs, list):
+            saldo = 0
+            costo = 0
+            for m in movs:
+                cant = m.get("cantidad", 0)
+                if m.get("tipo") == "entrada":
+                    saldo += cant
+                elif m.get("tipo") == "salida":
+                    saldo -= cant
+                costo = m.get("costo", 0)
             stock[prod] = {
-                "stock": info.get("stock", 0),
+                "stock": saldo,
+                "costo": costo,
+                "precio_venta": 0,
+            }
+    
+    # Fill in price from productos/kardex_peps
+    for prod, info in data.get("productos", {}).items():
+        if prod in stock:
+            stock[prod]["precio_venta"] = info.get("precio_venta", 0)
+            if not stock[prod]["costo"]:
+                stock[prod]["costo"] = info.get("costo_promedio", 0)
+    
+    for prod, info in data.get("kardex_peps", {}).items():
+        if prod in stock:
+            stock[prod]["precio_venta"] = info.get("precio_venta", 0) or stock[prod].get("precio_venta", 0)
+            if not stock[prod]["costo"]:
+                stock[prod]["costo"] = info.get("costo_promedio", 0)
+        else:
+            stock[prod] = {
+                "stock": 0,
                 "costo": info.get("costo_promedio", 0),
                 "precio_venta": info.get("precio_venta", 0),
             }
+    
     return jsonify(stock)
 
 

@@ -234,14 +234,13 @@
 {% set k = kardex.get(producto, []) %}
 {% set info_peps = reporte_peps.get(producto, {}) %}
 {% set pi = loop.index %}
+{% set saldo_kardex = productos_data.get(producto, {}).get('saldo_kardex', 0) %}
 <div class="card producto-card" data-nombre="{{ producto|lower }}" style="margin-bottom:12px;">
   <!-- Header -->
   <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
     <div style="display:flex;align-items:center;gap:10px;">
       <span style="font-size:15px;font-weight:700;color:var(--text-bright);">{{ producto }}</span>
-      {% if info_peps %}
-      <span class="badge {% if info_peps.stock > 10 %}badge-green{% elif info_peps.stock > 0 %}badge-yellow{% else %}badge-red{% endif %}">{{ info_peps.stock }} unid.</span>
-      {% endif %}
+      <span class="badge {% if saldo_kardex > 10 %}badge-green{% elif saldo_kardex > 0 %}badge-yellow{% else %}badge-red{% endif %}">{{ saldo_kardex }} unid.</span>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;">
       {% if info_peps %}

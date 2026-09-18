@@ -145,6 +145,19 @@ def kardex():
                 }
             else:
                 productos_data_dict[p] = {"precio_venta": 0, "margen": margen_default, "costo_promedio": 0}
+            
+            # Calcular saldo del Kardex
+            movs = data.get("kardex", {}).get(p, [])
+            saldo_kardex = 0
+            if movs:
+                for m in movs:
+                    cant = m.get("cantidad", 0)
+                    if m.get("tipo") == "entrada":
+                        saldo_kardex += cant
+                    elif m.get("tipo") == "salida":
+                        saldo_kardex -= cant
+            productos_data_dict[p]["saldo_kardex"] = saldo_kardex
+            
             peps_info = data.get("kardex_peps", {}).get(p, {})
             if isinstance(peps_info, dict):
                 if not productos_data_dict[p]["precio_venta"]:
@@ -401,19 +414,20 @@ def pos():
             peps_info = data.get("kardex_peps", {}).get(nombre, {})
             prod_info = data.get("productos", {}).get(nombre, {})
 
-            if isinstance(peps_info, dict) and peps_info.get("stock_total", 0) > 0:
-                saldo = peps_info.get("stock_total", 0)
-                costo = peps_info.get("costo_promedio", 0)
-            else:
-                k = data.get("kardex", {}).get(nombre, [])
-                if isinstance(k, list) and k:
-                    saldo = k[-1].get("saldo", 0)
-                    costo = k[-1].get("costo", 0)
-                elif isinstance(k, dict):
-                    saldo = k.get("saldo_actual", k.get("saldo_inicial", 0))
-                    costo = k.get("costo_unitario", 0)
-                else:
-                    continue
+            # Calcular saldo del Kardex (el más confiable)
+            k = data.get("kardex", {}).get(nombre, [])
+            saldo_kardex = 0
+            costo = 0
+            if isinstance(k, list) and k:
+                for m in k:
+                    cant = m.get("cantidad", 0)
+                    if m.get("tipo") == "entrada":
+                        saldo_kardex += cant
+                    elif m.get("tipo") == "salida":
+                        saldo_kardex -= cant
+                costo = k[-1].get("costo", 0)
+            
+            saldo = saldo_kardex
 
             pv = 0
             mg = 30
@@ -474,14 +488,16 @@ def pos_venta():
             precio = float(precios[i]) if precios[i] else 0
 
             if nombre and cantidad > 0 and precio > 0:
-                stock_disp = (data.get("kardex_peps", {})
-                              .get(nombre, {}).get("stock_total", 0))
-                if stock_disp <= 0:
-                    k = data.get("kardex", {}).get(nombre, [])
-                    if isinstance(k, list) and k:
-                        stock_disp = k[-1].get("saldo", 0)
-                    elif isinstance(k, dict):
-                        stock_disp = k.get("saldo_actual", 0)
+                # Calcular stock desde Kardex (el más confiable)
+                stock_disp = 0
+                k = data.get("kardex", {}).get(nombre, [])
+                if isinstance(k, list) and k:
+                    for m in k:
+                        cant = m.get("cantidad", 0)
+                        if m.get("tipo") == "entrada":
+                            stock_disp += cant
+                        elif m.get("tipo") == "salida":
+                            stock_disp -= cant
                 if stock_disp <= 0:
                     productos_sin_stock.append(nombre)
                     continue
